@@ -1,0 +1,13 @@
+﻿syntax = "proto3";
+
+package productlist.v1;
+
+option csharp_namespace = "ProductList.V1";
+
+message ProductList {
+	repeated Product results = 1;
+}
+
+message Product {
+	string ID=1;
+}
