@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StorageService.Api", "Stora
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "StorageTest", "StorageTest", "{70EC255F-CED4-4CF9-BEB5-812C780A8329}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StorageIntegrationTest", "StorageIntegrationTest\StorageIntegrationTest.csproj", "{9E835DE4-46E7-48BE-821D-E9A031ABBBB6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StorageIntegrationTest", "StorageIntegrationTest\StorageIntegrationTest.csproj", "{9E835DE4-46E7-48BE-821D-E9A031ABBBB6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

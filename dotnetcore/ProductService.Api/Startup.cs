@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ProductService.Api.GRPCServices;
 
 namespace ProductService.Api
 {
@@ -36,9 +37,10 @@ namespace ProductService.Api
         /// <param name="services">服务集合.</param>
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers().AddDapr();
-            services.AddDbContextPool<ProductContext>(options => { options.UseMySql(Configuration.GetConnectionString("MysqlConnection")); });
             services.AddGrpc();
+            services.AddControllers().AddDapr();
+           
+            services.AddDbContextPool<ProductContext>(options => { options.UseMySql(Configuration.GetConnectionString("MysqlConnection")); });
         }
 
         /// <summary>
@@ -53,16 +55,18 @@ namespace ProductService.Api
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseHttpsRedirection();
+            
             app.UseRouting();
 
             app.UseCloudEvents();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
-            {
-                //endpoints.MapSubscribeHandler();
-                //endpoints.MapControllers();
-                endpoints.MapGrpcService<GRPCServices.DaprClientService>();
+            {   
+                endpoints.MapSubscribeHandler();
+                endpoints.MapControllers();
+                endpoints.MapGrpcService<DaprClientService>();
             });
         }
     }

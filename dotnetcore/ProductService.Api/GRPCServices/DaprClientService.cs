@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using Dapr.Client.Grpc;
 using Daprclient;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -12,7 +12,7 @@ namespace ProductService.Api.GRPCServices
     /// <summary>
     /// Dapr Client Service Implement.
     /// </summary>
-    public sealed class DaprClientService : DaprClient.DaprClientClient
+    public class DaprClientService : DaprClient.DaprClientBase
     {
         private readonly ProductContext _productContext;
 
@@ -25,35 +25,24 @@ namespace ProductService.Api.GRPCServices
             _productContext = productContext;
         }
 
-        public override AsyncUnaryCall<Any> OnInvokeAsync(InvokeEnvelope request, CallOptions options)
+        public override Task<Any> OnInvoke(InvokeEnvelope request, ServerCallContext context)
         {
+            Console.WriteLine(request.Data.Value.ToStringUtf8());
             switch (request.Method)
             {
                 case "GetAllProducts":
                     Task<Any> productsList = GetAllProducts();
-                    return new AsyncUnaryCall<Any>(productsList, Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { });
-            }
-
-            return null;
-        }
-
-        public override Any OnInvoke(InvokeEnvelope request, CallOptions options)
-        {
-            switch (request.Method)
-            {
-                case "GetAllProducts":
-                    Any productsList = GetAllProducts().GetAwaiter().GetResult();
                     return productsList;
             }
 
-            return null;
+            return GetAllProducts();
         }
 
         /// <summary>
         /// 获取所有产品
         /// </summary>
         /// <returns></returns>
-        private async Task<Any> GetAllProducts()
+        public async Task<Any> GetAllProducts()
         {
             IList<Product> results = await _productContext.Products.ToListAsync();
             var productList = new ProductList.V1.ProductList();

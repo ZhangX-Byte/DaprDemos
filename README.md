@@ -250,7 +250,6 @@ ProductService 提供两个服务
    * Dapr.Client.Grpc
    * Grpc.AspNetCore
    * Grpc.Net.Client
-   * Grpc.Tools
 
 2. `Startup.cs` 文件中修改代码如下：
   
@@ -402,3 +401,110 @@ ProductService 提供两个服务
 > **注意：**
 >
 > * Dapr 使用 App 端口号应与服务端口号相同，例如：`ASP.Net Core` 服务端口号为5003，则在使用 Dapr 托管应用程序时的端口号也应使用 5003，在 Client.InvokeServiceAsync 中的 Id 指被调用方的 App-Id ,Method 指被调用方方法名称。参考 Go Server 中 OnInvoke 方法的 Switch 。
+
+## 改造 ProductService 以提供 gRPC 服务
+
+1. 从 NuGet 或程序包管理控制台安装 gRPC 服务必须的包
+
+   * Grpc.AspNetCore
+
+2. 在 Startup.cs 修改代码如下
+
+    ``` csharp
+    public void ConfigureServices(IServiceCollection services)
+    {
+        //启用 gRPC 服务
+        services.AddGrpc();
+        ...
+    }
+    ```
+
+    ``` csharp
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
+        }
+
+        app.UseRouting();
+
+        app.UseEndpoints(endpoints =>
+        {
+            ...
+
+            //添加 gRPC 到路由管道中
+            endpoints.MapGrpcService<DaprClientService>();
+        });
+    }
+    ```
+
+    这里添加的代码的含义分别是启用 gRPC 服务和添加 gRPC 路由。得益于 `ASP.NET Core` 中间件的优秀设计，`ASP.NET Core` 可同时支持 Http 服务。
+
+3. 配置 Http/2
+   * gRPC 服务需要 Http/2 协议。
+
+        ``` csharp
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.ConfigureKestrel(options =>
+                    {
+                        options.Listen(IPAddress.Any, 5001, listenOptions =>
+                        {
+                            listenOptions.Protocols = HttpProtocols.Http2;
+                            listenOptions.UseHttps("<path to .pfx file>", 
+                                "<certificate password>");
+                        });
+                    });
+                    webBuilder.UseStartup<Startup>();
+                });
+        ```
+
+   * 使用 [dev-certs](https://docs.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-2.1?view=aspnetcore-3.0#https) 以生成证书
+
+## JAVA GRPC 服务与调用
+
+### 安装协议编译器
+
+1. 下载对应的版本[编译器](https://github.com/protocolbuffers/protobuf/releases/tag/v3.11.2)，并把路径加入到环境变量中，执行以下命令生成代码
+
+    ``` cmd
+    protoc -I=$SRC_DIR --java_out=$DST_DIR $SRC_DIR/addressbook.proto
+    ```
+
+    `-I` 表示源码所在文件夹位置，`--java_out` 表示输出路径，空格后表示具体的 proto 文件位置，以下为示例命令
+
+   ``` cmd
+    protoc -I=C:\Users\JR\DaprDemos\java\examples\src\main\protos\examples --java_out=C:\Users\JR\DaprDemos\java\examples\src\main\java  C:\Users\JR\DaprDemos\java\examples\src\main\protos\examples\helloworld.proto
+   ```
+
+2. 启动 Dapr gRPC 服务端
+
+    ``` cmd
+    dapr run --app-id hellogrpc --app-port 5000 --protocol grpc -- mvn exec:java -pl=examples -Dexec.mainClass=server.HelloWorldService -Dexec.args="-p 5000"
+    ```
+
+    服务端主要实现说明
+    * 通过 Java SDK（实际此 SDK 可通过 protoc 自己生成，完成没有必要引用官方给的 SDK） 实现 dapr 对 gRPC 的通讯封装
+    * 服务端 proto 文件为 daprclient.proto ，鉴于语言之间的不同，名字看上去有点奇怪。（比如：以 client 为后缀，实际是服务端）
+
+3. 启动 Dapr gRPC 客户端
+
+    ``` cmd
+    dapr run --protocol grpc --grpc-port 50001 -- mvn exec:java -pl=examples -Dexec.mainClass=client.HelloWorldClient -Dexec.args="-p 50001 'message one' 'message two'"
+    ```
+
+4. gRPC 服务端收到消息
+
+    输出为：
+
+    ``` cmd
+     Server: message one
+     Server: message two
+    ```
+
+至此， Java 客户端服务端通过 Dapr 完成 gRPC 通讯。
+
+[源码地址](https://github.com/SoMeDay-Zhang/DaprDemos)

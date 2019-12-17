@@ -1,0 +1,16 @@
+generate\protos\DaprExamplesProtos$SayRequest$1.class
+server\HelloWorldService$1.class
+generate\protos\DaprExamplesProtos$SayRequest$Builder.class
+generate\protos\DaprExamplesProtos$SayResponseOrBuilder.class
+server\HelloWorldService.class
+generate\protos\DaprExamplesProtos$1.class
+generate\protos\DaprExamplesProtos$SayResponse$1.class
+generate\protos\DaprExamplesProtos$SayResponse$Builder.class
+server\HelloWorldService$GrpcHelloWorldDaprService$1.class
+client\HelloWorldClient$GrpcHelloWorldDaprClient.class
+generate\protos\DaprExamplesProtos$SayResponse.class
+generate\protos\DaprExamplesProtos$SayRequestOrBuilder.class
+generate\protos\DaprExamplesProtos.class
+generate\protos\DaprExamplesProtos$SayRequest.class
+server\HelloWorldService$GrpcHelloWorldDaprService.class
+client\HelloWorldClient.class

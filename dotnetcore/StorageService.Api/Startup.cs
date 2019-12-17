@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,7 @@ namespace StorageService.Api
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers().AddDapr();
+            //services.AddGrpc();
             services.AddDbContextPool<StorageContext>(options => { options.UseMySql(Configuration.GetConnectionString("MysqlConnection")); });
         }
 
@@ -49,8 +51,8 @@ namespace StorageService.Api
             }
 
             app.UseRouting();
+            app.UseHttpsRedirection();
             app.UseCloudEvents();
-
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>

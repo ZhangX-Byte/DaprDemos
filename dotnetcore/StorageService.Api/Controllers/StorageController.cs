@@ -26,7 +26,7 @@ namespace StorageService.Api.Controllers
         [HttpGet("InitialStorage")]
         public async Task<bool> InitialStorage()
         {
-            string defaultPort = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT") ?? "54681";
+            string defaultPort = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT") ?? "5001";
 
             // Set correct switch to make insecure gRPC service calls. This switch must be set before creating the GrpcChannel.
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
@@ -35,12 +35,13 @@ namespace StorageService.Api.Controllers
             string daprUri = $"http://127.0.0.1:{defaultPort}";
             GrpcChannel channel = GrpcChannel.ForAddress(daprUri);
             var client = new Dapr.Client.Grpc.Dapr.DaprClient(channel);
+
             Console.WriteLine(daprUri);
 
             InvokeServiceResponseEnvelope result = await client.InvokeServiceAsync(new InvokeServiceEnvelope
             {
                 Method = "MyMethod",
-                Id = "client",
+                Id = "product",
                 Data = new Google.Protobuf.WellKnownTypes.Any
                 {
                     Value = ByteString.CopyFromUtf8("Hello ProductService")
