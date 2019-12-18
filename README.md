@@ -843,8 +843,9 @@ ProductService 提供两个服务
     ```
 
 5. 使用 Postman 请求 StorageService 的 InitialStorage
-
+    ![InitialStorage](https://raw.githubusercontent.com/SoMeDay-Zhang/DaprDemos/master/docs/images/daprInitialStorage.png)
 6. 使用 MySql Workbench 查看结果
+    ![InitialStorageResult](https://raw.githubusercontent.com/SoMeDay-Zhang/DaprDemos/master/docs/images/daprInitialStorageResult.png)
 
 >**小结**
 >至此，以 Dapr 框架使用 GRPC 客户端在 StorageService 中完成了对 ProductService 服务的调用。
