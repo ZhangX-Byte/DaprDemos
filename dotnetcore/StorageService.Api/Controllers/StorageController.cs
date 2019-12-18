@@ -2,9 +2,10 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Dapr.Client.Grpc;
-using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Mvc;
+using ProductList.V1;
 using StorageService.Api.Entities;
 
 namespace StorageService.Api.Controllers
@@ -36,20 +37,27 @@ namespace StorageService.Api.Controllers
             GrpcChannel channel = GrpcChannel.ForAddress(daprUri);
             var client = new Dapr.Client.Grpc.Dapr.DaprClient(channel);
 
-            Console.WriteLine(daprUri);
-
             InvokeServiceResponseEnvelope result = await client.InvokeServiceAsync(new InvokeServiceEnvelope
             {
-                Method = "MyMethod",
-                Id = "product",
-                Data = new Google.Protobuf.WellKnownTypes.Any
-                {
-                    Value = ByteString.CopyFromUtf8("Hello ProductService")
-                }
+                Method = "GetAllProducts",
+                Id = "productService",
+                Data = Any.Pack(new ProductListRequest())
             });
-            Console.WriteLine("this is call result:" + result.Data.Value.ToStringUtf8());
-            //var productResult = result.Data.Unpack<ProductList.V1.ProductList>();
-            //Console.WriteLine("this is call result:" + productResult.Results.FirstOrDefault());
+            ProductList.V1.ProductList productResult = ProductList.V1.ProductList.Parser.ParseFrom(result.Data.Value);
+
+            var random = new Random();
+
+            foreach (Product item in productResult.Results)
+            {
+                _storageContext.Storage.Add(new Storage
+                {
+                    ProductID = Guid.Parse(item.ID),
+                    Amount = random.Next(1, 1000)
+                });
+            }
+
+            await _storageContext.SaveChangesAsync();
+
             return true;
         }
 

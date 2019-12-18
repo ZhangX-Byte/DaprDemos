@@ -7,7 +7,7 @@ namespace StorageService.Api.Entities
     {
         public void Configure(EntityTypeBuilder<Storage> builder)
         {
-            builder.HasNoKey();
+            builder.HasKey(q => q.ProductID);
             builder.Property(q => q.ProductID).IsRequired();
             builder.Property(q => q.Amount).IsRequired();
         }

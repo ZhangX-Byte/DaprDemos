@@ -37,9 +37,9 @@ namespace ProductService.Api
         /// <param name="services">服务集合.</param>
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddGrpc();
             services.AddControllers().AddDapr();
-           
+            services.AddGrpc();
+            services.AddTransient<ProductListService>();
             services.AddDbContextPool<ProductContext>(options => { options.UseMySql(Configuration.GetConnectionString("MysqlConnection")); });
         }
 
@@ -55,12 +55,9 @@ namespace ProductService.Api
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseHttpsRedirection();
-            
             app.UseRouting();
 
             app.UseCloudEvents();
-            app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {   

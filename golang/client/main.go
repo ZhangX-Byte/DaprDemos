@@ -26,9 +26,9 @@ func main() {
 
 	// Invoke a method called MyMethod on another Dapr enabled service with id client
 	resp, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
-		Id:     "product",
+		Id:     "productService",
 		Data:   &any.Any{Value: []byte("Hello")},
-		Method: "MyMethod",
+		Method: "GetAllProducts",
 	})
 	if err != nil {
 		fmt.Println(err)

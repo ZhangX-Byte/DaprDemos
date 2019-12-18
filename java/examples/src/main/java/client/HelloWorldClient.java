@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
  * 1. Build and install jars:
  *   mvn clean install
  * 2. Send messages to the server:
- *   dapr run --protocol grpc --grpc-port 50001 -- mvn exec:java -pl=examples -Dexec.mainClass=io.dapr.examples.invoke.grpc.HelloWorldClient -Dexec.args="-p 50001 'message one' 'message two'"
+ *   dapr run --protocol grpc --grpc-port 50001 -- mvn exec:java -pl=examples -Dexec.mainClass=server.HelloWorldClient -Dexec.args="-p 50001 'message one' 'message two'"
  */
 public class HelloWorldClient {
 

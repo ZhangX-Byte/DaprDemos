@@ -4,6 +4,14 @@ package productlist.v1;
 
 option csharp_namespace = "ProductList.V1";
 
+service ProductRPCService{
+	rpc GetAllProducts(ProductListRequest) returns(ProductList);
+}
+
+message ProductListRequest{
+
+}
+
 message ProductList {
 	repeated Product results = 1;
 }

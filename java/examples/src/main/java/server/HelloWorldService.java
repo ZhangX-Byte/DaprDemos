@@ -23,7 +23,7 @@ import java.util.TimeZone;
  * 1. Build and install jars:
  * mvn clean install
  * 2. Run in server mode:
- * dapr run --app-id hellogrpc --app-port 5000 --protocol grpc -- mvn exec:java -pl=examples -Dexec.mainClass=io.dapr.examples.invoke.grpc.HelloWorldService -Dexec.args="-p 5000"
+ * dapr run --app-id hellogrpc --app-port 5000 --protocol grpc -- mvn exec:java -pl=examples -Dexec.mainClass=server.HelloWorldService -Dexec.args="-p 5000"
  */
 public class HelloWorldService {
 

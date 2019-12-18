@@ -9,7 +9,6 @@
   <ItemGroup>
     <PackageReference Include="Dapr.AspNetCore" Version="0.3.0-preview01" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.25.0" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.25.0" />
     <PackageReference Include="Grpc.Net.ClientFactory" Version="2.25.0" />
     <PackageReference Include="Grpc.Tools" Version="2.25.0">
       <PrivateAssets>all</PrivateAssets>
