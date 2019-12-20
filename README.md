@@ -460,7 +460,7 @@ ProductService 提供两个服务
         说明
         * 定义产品列表 gRPC 服务，得益于宇宙第一 IDE Visual Studio ，只要添加 Grpc.Tools 包就可以自动生成 gRPC 所需的代码，这里不再需要手动去添加 Grpc.Tools ，官方提供的 Grpc.AspNetCore 中已经集成了
         * 定义了一个服务 ProductRPCService
-        * 定义了一个函数 ProductRPCService
+        * 定义了一个函数 GetAllProducts
         * 定义了一个请求构造 ProductListRequest ，内容为空
         * 定义了一个请求返回构造 ProductList ，使用 repeated 表明返回数据是集合
         * 定义了一个数据集合中的一个对象 Product  
