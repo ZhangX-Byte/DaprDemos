@@ -46,15 +46,6 @@ func main() {
 	} else {
 		result := &productlist_v1.ProductList{}
 
-		//本来应该这么写，但是ptypes.UnmarshalAny这里会报错，因为返回的时候没有typeUrl
-		// if err := ptypes.UnmarshalAny(resp.Data, result); err == nil {
-		// 	for _, product := range result.Results {
-		// 		fmt.Println(product.ID)
-		// 	}
-		// } else {
-		// 	fmt.Println(err)
-		// }
-
 		if err := proto.Unmarshal(resp.Data.Value, result); err == nil {
 			for _, product := range result.Results {
 				fmt.Println(product.ID)
@@ -62,6 +53,5 @@ func main() {
 		} else {
 			fmt.Println(err)
 		}
-		fmt.Println(resp.Data.TypeUrl)
 	}
 }
