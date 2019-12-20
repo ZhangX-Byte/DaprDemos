@@ -832,6 +832,8 @@ ProductService 提供两个服务
                 Amount = random.Next(1, 1000)
             });
         }
+
+        await _storageContext.SaveChangesAsync();
         return true;
     }
     ```
@@ -908,4 +910,64 @@ ProductService 提供两个服务
 
 至此， Java 客户端服务端通过 Dapr 完成 gRPC 通讯。
 
-[源码地址](https://github.com/SoMeDay-Zhang/DaprDemos)
+## K8S 集成 Dapr
+
+前置条件
+
+* [搭建 K8S 本地集群](https://github.com/dapr/docs/blob/master/getting-started/cluster/setup-minikube.md)
+
+1. 使用命令查看 K8S Dashboard
+
+    ``` cmd
+    minikube dashboard --url
+    ```
+
+    此命令可以获取到 Dashboard 的代理地址，复制地址到浏览器中以进行查阅。
+
+2. 查看 Dapr Pods
+    通过输入 `kubectl get ns` 获取到本地集群中的所有命名空间。
+
+    ``` cmd
+    kubectl get ns
+    ```
+
+    输出为
+
+    ``` cmd
+    NAME                   STATUS   AGE
+    dapr-system            Active   18h
+    default                Active   18h
+    kube-node-lease        Active   18h
+    kube-public            Active   18h
+    kube-system            Active   18h
+    kubernetes-dashboard   Active   18h
+    ```
+
+    此时可以看到 Dapr 的命名空间为 dapr-system 。查看 dapr-system 下的所有 pods 。
+
+    ``` cmd
+    kubectl get pods -n dapr-system
+    ```
+
+    输出为
+
+    ``` cmd
+    NAME                                     READY   STATUS    RESTARTS   AGE
+    dapr-operator-7c6799878d-sp455           1/1     Running   0          18h
+    dapr-placement-76c99b79bb-plgkl          1/1     Running   0          18h
+    dapr-sidecar-injector-84c5578f8d-bfsls   1/1     Running   0          18h
+    ```
+
+3. 搭建私有 Docker Repository
+
+    * 打开 DockerDesktop -> Settings -> Deamon ，在 Registry mirrors 中添加 `http://hub-mirror.c.163.com` ,点击 Apply Docker Desktop 将自动重启以应用更改。这里使用了网易的镜像源
+    * 打开 cmd 运行 `docker pull registry:latest` 以获取最近的 registry 镜像
+    * 启动 registry 镜像
+
+      ``` cmd
+      docker run -d -p 8900:5000 --restart always --name registry registry:latest
+      ```
+
+      ``` cmd
+      docker build -f Dockfile文件所在位置 --force-rm -t productserviceapi
+      ```

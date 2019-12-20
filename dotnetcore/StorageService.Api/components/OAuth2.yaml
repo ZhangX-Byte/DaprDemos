@@ -1,0 +1,15 @@
+﻿apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: oauth2
+spec:
+  type: middleware.http.oauth2
+  metadata:
+  - name: Authorization
+    value: "Basic dGVzdDp0ZXN0"
+  - name: scopes
+    value: "server"
+  - name: authURL
+    value: "https://bjrule3-dev.myweplus.com:8332/auth/oauth/token"
+  - name: tokenURL
+    value: "https://bjrule3-dev.myweplus.com:8332/auth/oauth/check_token?token"

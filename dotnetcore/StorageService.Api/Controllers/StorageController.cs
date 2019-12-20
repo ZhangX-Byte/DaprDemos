@@ -5,6 +5,7 @@ using Dapr.Client.Grpc;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ProductList.V1;
 using StorageService.Api.Entities;
 
@@ -49,6 +50,11 @@ namespace StorageService.Api.Controllers
 
             foreach (Product item in productResult.Results)
             {
+                Storage productFromDb = await _storageContext.Storage.FirstOrDefaultAsync(q => q.ProductID.Equals(Guid.Parse(item.ID)));
+                if (productFromDb != null)
+                {
+                    continue;
+                }
                 _storageContext.Storage.Add(new Storage
                 {
                     ProductID = Guid.Parse(item.ID),
