@@ -32,8 +32,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="Protos\productList.proto" GrpcServices="Client"></Protobuf>
-    <Protobuf Include="Protos\dapr.proto" GrpcServices="Client"></Protobuf>
+    <Protobuf Include="Protos\productList.proto" GrpcServices="Server"></Protobuf>
+    <Protobuf Include="Protos\daprclient.proto" GrpcServices="Server"></Protobuf>
+    <Protobuf Include="Protos\dapr.proto" GrpcServices="Server"></Protobuf>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\" />
   </ItemGroup>
 
 </Project>

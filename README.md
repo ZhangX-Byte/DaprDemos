@@ -30,7 +30,6 @@ Docker 启动 Mysql
 docker run --name mysqltest -e MYSQL_ROOT_PASSWORD=123456 -d mysql
 ```
 
-
 ### 使用 Dapr CLI 安装 Darp runtime
 
 在 Windows PowerShell 或 cmd 中使用命令 `dapr init` 以安装 Dapr。
@@ -505,7 +504,7 @@ ProductService 提供两个服务
     }
     ```
 
-    这里的 services.AddTransient<ProductListService>(); 的原因是在 Dapr 中需要使用构造器注入，以完成 `GetAllProducts(...)` 函数的调用
+    这里的 `services.AddTransient<ProductListService>()` ; 的原因是在 Dapr 中需要使用构造器注入，以完成 `GetAllProducts(...)` 函数的调用
 
     ``` csharp
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -916,10 +915,10 @@ ProductService 提供两个服务
 
 * [搭建 K8S 本地集群](https://github.com/dapr/docs/blob/master/getting-started/cluster/setup-minikube.md)
 
-1. 使用命令查看 K8S Dashboard
+1. 使用命令查看 K8S 本地集群 Dashboard
 
     ``` cmd
-    minikube dashboard --url
+    minikube dashboard
     ```
 
     此命令可以获取到 Dashboard 的代理地址，复制地址到浏览器中以进行查阅。
@@ -960,14 +959,87 @@ ProductService 提供两个服务
 
 3. 搭建私有 Docker Repository
 
-    * 打开 DockerDesktop -> Settings -> Deamon ，在 Registry mirrors 中添加 `http://hub-mirror.c.163.com` ,点击 Apply Docker Desktop 将自动重启以应用更改。这里使用了网易的镜像源
+    * 打开 DockerDesktop -> Settings -> Deamon ，在 Registry mirrors 中添加 `http://hub-mirror.c.163.com` ,点击 Apply ， Docker Desktop 将自动重启以应用更改。这里使用了网易的镜像源
     * 打开 cmd 运行 `docker pull registry:latest` 以获取最近的 registry 镜像
-    * 启动 registry 镜像
+    * 启动 registry 镜像以搭建本地镜像仓库
 
       ``` cmd
       docker run -d -p 8900:5000 --restart always --name registry registry:latest
       ```
 
+    * 构建镜像 - buid
+
       ``` cmd
-      docker build -f Dockfile文件所在位置 --force-rm -t productserviceapi
+      docker build -f dockerfile文件所在位置绝对路径 --force-rm -t 192.168.1.243:8900/productserviceapi:dev  "c:\users\jr\daprdemos\dotnetcore"
       ```
+
+      打包成功后，输入 `docker images` 以查看生成的镜像
+
+      ``` cmd
+      REPOSITORY                             TAG                 IMAGE ID            CREATED             SIZE
+      192.168.1.243:8999/productserviceapi   dev                 3c3b4b41a4e3        14 minutes ago      232MB
+      ```
+
+    * 推送镜像到本地仓库 - push
+
+      ``` cmd
+      docker push 192.168.1.243:8999/productserviceapi:dev
+      ```
+
+      输出为
+
+      ``` cmd
+      Get https://192.168.1.243:8999/v2/: http: server gave HTTP response to HTTPS client
+      ```
+
+      打开 DockerDesktop -> Settings -> Deamon -> Insecure registries 中输入`192.168.1.243:8999` ，点击 Apply ， Docker Desktop 将自动重启以应用更改
+
+      再次运行 Push 命令，输出为
+
+      ``` cmd
+      The push refers to repository [192.168.1.243:8999/productserviceapi]
+      9a8e684f88ea: Pushed
+      3044a592a506: Pushed
+      62b3f719c3a6: Pushed
+      52d5ea296228: Pushed
+      239bf536471e: Pushed
+      cad0d4e88a35: Pushed
+      831c5620387f: Pushed
+      dev: digest: sha256:5f3f79c6a45cf073e05f5426c858f5ce63cbc8e34639add81eed23b80fe70286 size: 1792
+      ```
+
+## Dapr Pub/Sub 集成 RabbitMQ
+
+1. 搭建 RabbitMQ
+
+    * Docker 搭建 RabbitMQ 服务
+
+        ``` cmd
+        docker run -d --hostname my-rabbit --name some-rabbit -p 15672:15672 rabbitmq:3-management
+        ```
+
+    * 创建 messagebus.yaml
+
+        ``` yaml
+        apiVersion: dapr.io/v1alpha1
+        kind: Component
+        metadata:
+        name:messagebus
+        spec:
+        type: pubsub.rabbitmq
+        metadata:
+        - name: host
+            value: "localhost:5672" # Required. Example: "rabbitmq.default.svc.cluster.local:5672"
+        - name: consumerID
+            value: "61415901178272324029" # Required. Any unique ID. Example: "myConsumerID"
+        - name: durable
+            value: "true" # Optional. Default: "false"
+        - name: deletedWhenUnused
+            value: "false" # Optional. Default: "false"
+        - name: autoAck
+            value: "false" # Optional. Default: "false"
+        - name: deliveryMode
+            value: "2" # Optional. Default: "0". Values between 0 - 2.
+        - name: requeueInFailure
+            value: "true" # Optional. Default: "false".
+        ```
