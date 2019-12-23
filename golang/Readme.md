@@ -97,3 +97,109 @@ req := &productlist_v1.ProductListRequest{}
 			fmt.Println(err)
 		}
 ```
+
+
+## golang调用golang
+
+服务端代码在customer下   
+客户端代码在shoppingCart下  
+客户端代码与 golang调用.net 基本一致  
+
+### 服务端代码详解
+
+1.新建 customer.proto 文件 定义传输规范
+
+```
+syntax = "proto3";
+
+package customer.v1;
+
+service CustomerService {
+    rpc GetCustomerById(IdRequest) returns (Customer);
+}
+
+message IdRequest {
+    int32 id = 1;
+}
+
+message Customer {
+    int32 id = 1;
+    string name = 2;
+}
+```
+
+然后生成 customer.pb.go 文件
+
+```
+protoc --go_out=plugins=grpc:. *.proto
+```
+
+2.新建 customerService.go 文件，用来进行服务端处理
+
+```
+package service
+
+import (
+	pb "daprdemos/golang/customer/protos/customer_v1"
+)
+
+type CustomerService struct {
+}
+
+func (s *CustomerService) GetCustomerById(req *pb.IdRequest) pb.Customer {
+	return pb.Customer{
+		Id:   req.Id,
+		Name: "小红",
+	}
+}
+
+```
+
+3.新建 main.go 入口文件
+
+监听grpc服务并注册DaprClientServer
+
+```
+func main() {
+	// create listiner
+	lis, err := net.Listen("tcp", ":4000")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	// create grpc server
+	s := grpc.NewServer()
+	pb.RegisterDaprClientServer(s, &server{})
+
+	fmt.Println("Client starting...")
+
+	// and start...
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+```
+
+实现DaprClientServer
+
+```
+type server struct {
+}
+
+func (s *server) OnInvoke(ctx context.Context, in *pb.InvokeEnvelope) (*any.Any, error) {
+	fmt.Println(fmt.Sprintf("Got invoked with: %s", string(in.Data.Value)))
+
+	switch in.Method {
+	case "GetCustomerById":
+		input := &customer_v1.IdRequest{}
+
+		customerService := &service.CustomerService{}
+
+		proto.Unmarshal(in.Data.Value, input)
+		resp := customerService.GetCustomerById(input)
+		any, err := ptypes.MarshalAny(&resp)
+		return any, err
+	}
+	return &any.Any{}, nil
+}
+```
