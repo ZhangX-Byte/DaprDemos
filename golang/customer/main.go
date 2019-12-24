@@ -6,14 +6,14 @@ import (
 	"log"
 	"net"
 
+	_ "daprdemos/golang/customer/config/db"
+	"daprdemos/golang/customer/protos/customer_v1"
+	"daprdemos/golang/customer/service"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/empty"
-
-	"daprdemos/golang/customer/service"
-
-	"daprdemos/golang/customer/protos/customer_v1"
 
 	pb "github.com/dapr/go-sdk/daprclient"
 	"google.golang.org/grpc"

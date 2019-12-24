@@ -2,7 +2,7 @@ package models
 
 import "github.com/jinzhu/gorm"
 
-type Cuntomer struct {
+type Customer struct {
 	gorm.Model
 	Name string
 }
