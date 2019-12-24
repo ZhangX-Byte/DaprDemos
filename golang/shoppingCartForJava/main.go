@@ -27,31 +27,31 @@ func main() {
 	// Create the client
 	client := pb.NewDaprClient(conn)
 
-	req := &daprexamples.CreateOrderRequest{
+	createOrderRequest := &daprexamples.CreateOrderRequest{
 		ProductID:  "1",
 		Amount:     20,
 		CustomerID: "1",
 	}
-	any, err := ptypes.MarshalAny(req)
+	createOrderRequestData, err := ptypes.MarshalAny(createOrderRequest)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(createOrderRequestData)
 	} else {
-		fmt.Println(any)
+		fmt.Println(createOrderRequestData)
 	}
 
 	// Invoke a method called MyMethod on another Dapr enabled service with id client
-	resp, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
+	response, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
 		Id:     "OrderService",
-		Data:   any,
+		Data:   createOrderRequestData,
 		Method: "CreateOrder",
 	})
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		result := &daprexamples.CreateOrderResponse{}
+		createOrderResponse := &daprexamples.CreateOrderResponse{}
 
-		if err := proto.Unmarshal(resp.Data.Value, result); err == nil {
-			fmt.Println(result.Succeed)
+		if err := proto.Unmarshal(response.Data.Value, createOrderResponse); err == nil {
+			fmt.Println(createOrderResponse.Succeed)
 		} else {
 			fmt.Println(err)
 		}
