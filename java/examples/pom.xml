@@ -12,6 +12,7 @@
     <properties>
         <protobuf.output.directory>${project.build.directory}/generated-sources</protobuf.output.directory>
         <protobuf.input.directory>${project.parent.basedir}</protobuf.input.directory>
+        <mybatis.version>3.5.3</mybatis.version>
     </properties>
 
     <artifactId>examples</artifactId>
@@ -38,6 +39,21 @@
             <artifactId>sdk</artifactId>
             <version>0.3.0-alpha</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mybatis</groupId>
+            <artifactId>mybatis</artifactId>
+            <version>${mybatis.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.18</version>
         </dependency>
     </dependencies>
 </project>

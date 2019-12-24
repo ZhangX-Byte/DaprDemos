@@ -1043,3 +1043,233 @@ ProductService 提供两个服务
         - name: requeueInFailure
             value: "true" # Optional. Default: "false".
         ```
+
+2. 改造 StorageService.Api
+
+    目的：把 StorageService 从 Grpc 客户端改造为 Grpc 服务端，并 Sub Storage.Reduce 主题，完成减库存操作。
+
+    * 删除 Storage 中无用的代码 StorageController.cs
+    * 修改 Program.cs 中的 CreateHostBuilder 代码为
+
+        ``` csharp
+        public static IHostBuilder CreateHostBuilder(string[] args)
+        {
+            return Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.ConfigureKestrel(options =>
+                    {
+                        options.Listen(IPAddress.Loopback, 5003, listenOptions =>
+                        {
+                            listenOptions.Protocols = HttpProtocols.Http2;
+                        });
+                    });
+                    webBuilder.UseStartup<Startup>();
+                });
+        }
+        ```
+
+    * 添加 DaprClientService
+
+        ``` csharp
+        public sealed class DaprClientService : DaprClient.DaprClientBase
+        {
+            public override Task<GetTopicSubscriptionsEnvelope> GetTopicSubscriptions(Empty request, ServerCallContext context)
+            {
+                var topicSubscriptionsEnvelope = new GetTopicSubscriptionsEnvelope();
+                topicSubscriptionsEnvelope.Topics.Add("Storage.Reduce");
+                return Task.FromResult(topicSubscriptionsEnvelope);
+            }
+        }
+        ```
+
+        **Dapr 运行时将调用此方法获取 StorageServcie 关注的主题列表**。
+
+    * 修改 Startup.cs
+
+        ``` csharp
+         /// <summary>
+        /// This method gets called by the runtime. Use this method to add services to the container.
+        /// </summary>
+        /// <param name="services">Services.</param>
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddDbContextPool<StorageContext>(options => { options.UseMySql(Configuration.GetConnectionString("MysqlConnection")); });
+        }
+        ```
+
+        ``` csharp
+        /// <summary>
+        /// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        /// </summary>
+        /// <param name="app">app.</param>
+        /// <param name="env">env.</param>
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+
+            app.UseRouting();
+
+            app.UseCloudEvents();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapSubscribeHandler();
+                endpoints.MapGrpcService<DaprClientService>();
+            });
+        }
+        ```
+
+3. 使用 Java 开发一个 Order 服务端，Order 服务提供的功能为
+   * 下单
+   * 查看订单详情
+   * 获取订单列表
+
+    在当前上下文中着重处理的是下单功能，以及下单成功后 Java 服务端将发布一个事件到 Storage.Reduce 主题，即减少库存。
+
+    * 创建 CreateOrder.proto 文件
+
+        ``` proto
+        syntax = "proto3";
+
+        package daprexamples;
+
+        option java_outer_classname = "CreateOrderProtos";
+        option java_package = "generate.protos";
+
+        service OrderService {
+            rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
+            rpc RetrieveOrder(RetrieveOrderRequest) returns(RetrieveOrderResponse);
+            rpc GetOrderList(GetOrderListRequest) returns(GetOrderListResponse);
+        }
+
+        message CreateOrderRequest {
+            string ProductID = 1; //Product ID
+            int32 Amount=2; //Product Amount
+            string CustomerID=3; //Customer ID
+        }
+
+        message CreateOrderResponse {
+            bool Succeed = 1; //Create Order Result，true:success，false:fail
+        }
+
+        message RetrieveOrderRequest{
+            string OrderID=1;
+        }
+
+        message RetrieveOrderResponse{
+            Order Order=1;
+        }
+
+        message GetOrderListRequest{
+            string CustomerID=1;
+        }
+
+        message GetOrderListResponse{
+            repeated Order Orders=1;
+        }
+
+        message Order{
+            string ID=1;
+            string ProductID=2;
+            int32 Amount=3;
+            string CustomerID=4;
+        }
+        ```
+
+    * 使用 protoc 生成 Java 代码
+
+        ``` cmd
+        protoc -I=C:\Users\JR\DaprDemos\java\examples\src\main\protos\examples --java_out=C:\Users\JR\DaprDemos\java\examples\src\main\java  C:\Users\JR\DaprDemos\java\examples\src\main\protos\examples\CreateOrder.proto
+        ```
+
+    * 引用 MyBatis 做为 Mapper 工具
+    * 修改 HelloWorldService.java 文件，提取 GrpcHelloWorldDaprService.java 到单独的包中，在此文件中添加 `createOrder()` 、 `getOrderList()` 、 `retrieveOrder()` 三个函数的实现
+    * 在 `createOrder()` 函数中发布事件到 Storage.Reduce 主题
+      * 创建 DataToPublish.proto 文件
+
+        ``` proto
+        syntax = "proto3";
+
+        package daprexamples;
+
+        option java_outer_classname = "DataToPublishProtos";
+        option java_package = "generate.protos";
+
+        message StorageReduceData {
+            string ProductID = 1;
+            int32 Amount=2;
+        }
+        ```
+
+    * 生成代码
+
+        ``` cmd
+        protoc -I=C:\Users\JR\DaprDemos\java\examples\src\main\protos\examples --java_out=C:\Users\JR\DaprDemos\java\examples\src\main\java  C:\Users\JR\DaprDemos\java\examples\src\main\protos\examples\DataToPublish.proto
+        ```
+
+    * 创建 PublishMessageClient.java 以发布事件
+
+        ``` java
+        public class PublishMessageClient {
+
+            /**
+            * Client communication channel: host, port and tls(on/off)
+            */
+            private final ManagedChannel channel;
+
+            /**
+            * Calls will be done asynchronously.
+            */
+            private final DaprGrpc.DaprFutureStub client;
+
+            /**
+            * Creates a Grpc client for the DaprGrpc service.
+            *
+            * @param port port for the remote service endpoint
+            */
+            public PublishMessageClient(int port) {
+                this(ManagedChannelBuilder
+                        .forAddress("localhost", port)
+                        .usePlaintext()  // SSL/TLS is default, we turn it off just because this is a sample and not prod.
+                        .build());
+            }
+
+            /**
+            * Helper constructor to build client from channel.
+            *
+            * @param channel
+            */
+            private PublishMessageClient(ManagedChannel channel) {
+                this.channel = channel;
+                this.client = DaprGrpc.newFutureStub(channel);
+            }
+
+            /**
+            * Publish Event To StorageReduce topic
+            * @param storageReduceData
+            */
+            public void PublishToStorageReduce(DataToPublishProtos.StorageReduceData storageReduceData) {
+                DaprProtos.PublishEventEnvelope publishEventEnvelope = DaprProtos.PublishEventEnvelope.newBuilder().setTopic("Storage.Reduce").setData(Any.pack(storageReduceData)).build();
+                client.publishEvent(publishEventEnvelope);
+            }
+         }
+        ```
+
+    * 在 `onInvoke()` `createOrder` 分支发布消息
+
+        ``` java
+         case "createOrder":
+                    CreateOrderProtos.CreateOrderRequest createOrderRequest = CreateOrderProtos.CreateOrderRequest.parseFrom(request.getData().getValue());
+                    CreateOrderProtos.CreateOrderResponse createOrderResponse = this.createOrder(createOrderRequest);
+
+                    DataToPublishProtos.StorageReduceData storageReduceData = DataToPublishProtos.StorageReduceData.newBuilder().setProductID(createOrderRequest.getProductID()).setAmount(createOrderRequest.getAmount()).build();
+                    publishMessageClient.PublishToStorageReduce(storageReduceData);
+                    responseObserver.onNext(Any.pack(createOrderResponse));
+                    break;
+        ```
+
+    * 替换 messagebus.yaml 文件以通过 RabbitMQ 发布消息

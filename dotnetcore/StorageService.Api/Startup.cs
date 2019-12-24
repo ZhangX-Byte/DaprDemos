@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using StorageService.Api.GrpcServices;
 
 namespace StorageService.Api
 {
@@ -33,7 +34,6 @@ namespace StorageService.Api
         /// <param name="services">Services.</param>
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers().AddDapr();
             services.AddDbContextPool<StorageContext>(options => { options.UseMySql(Configuration.GetConnectionString("MysqlConnection")); });
         }
 
@@ -50,13 +50,13 @@ namespace StorageService.Api
             }
 
             app.UseRouting();
-            app.UseHttpsRedirection();
+
             app.UseCloudEvents();
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapSubscribeHandler();
-                endpoints.MapControllers();
+                endpoints.MapGrpcService<DaprClientService>();
             });
         }
     }
