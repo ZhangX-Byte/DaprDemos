@@ -5,9 +5,10 @@ package daprexamples;
 option java_outer_classname = "CreateOrderProtos";
 option java_package = "generate.protos";
 
-// User Code definitions
 service OrderService {
-    rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse) {}
+    rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
+    rpc RetrieveOrder(RetrieveOrderRequest) returns(RetrieveOrderResponse);
+    rpc GetOrderList(GetOrderListRequest) returns(GetOrderListResponse);
 }
 
 message CreateOrderRequest {
@@ -18,4 +19,27 @@ message CreateOrderRequest {
 
 message CreateOrderResponse {
     bool Succeed = 1; //Create Order Result，true:success，false:fail
+}
+
+message RetrieveOrderRequest{
+    string OrderID=1;
+}
+
+message RetrieveOrderResponse{
+    Order Order=1;
+}
+
+message GetOrderListRequest{
+    string CustomerID=1;
+}
+
+message GetOrderListResponse{
+    repeated Order Orders=1;
+}
+
+message Order{
+    string ID=1;
+    string ProductID=2;
+    int32 Amount=3;
+    string CustomerID=4;
 }
