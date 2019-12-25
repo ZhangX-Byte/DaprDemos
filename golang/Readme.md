@@ -119,11 +119,11 @@ service CustomerService {
 }
 
 message IdRequest {
-    int32 id = 1;
+    string id = 1;
 }
 
 message Customer {
-    int32 id = 1;
+    string id = 1;
     string name = 2;
 }
 ```
@@ -219,15 +219,28 @@ go get -u github.com/jinzhu/gorm
 ```
 package models
 
-import "github.com/jinzhu/gorm"
+import (
+	"github.com/google/uuid"
+	"github.com/jinzhu/gorm"
+)
 
 type Customer struct {
-	gorm.Model
+	ID   uuid.UUID `gorm:"primary_key;type:varchar(36)"`
 	Name string
 }
+
+func (customer *Customer) BeforeCreate(scope *gorm.Scope) error {
+	if idField, ok := scope.FieldByName("ID"); ok {
+		if idField.IsBlank {
+			idField.Set(uuid.New())
+		}
+	}
+	return nil
+}
+
 ```
 
-`gorm.Model` 是一个包含了`ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt`四个字段的GoLang结构体。
+BeforeCreate是一个钩子函数，在创建对象前调用
 
 
 3.新建数据库迁移
@@ -289,6 +302,8 @@ import (
 	"daprdemos/golang/customer/models"
 	"fmt"
 	"strconv"
+
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -297,7 +312,12 @@ func main() {
 	db.DB.Model(&models.Customer{}).Count(&count)
 	if count == 0 {
 		for index := 0; index < 100; index++ {
+			var guid uuid.UUID
+			if index == 0 {
+				guid, _ = uuid.Parse("1e88e584-dcbd-44f6-9960-53c2ad687399")
+			}
 			db.DB.Create(&models.Customer{
+				ID:   guid,
 				Name: "小红" + strconv.Itoa(index),
 			})
 		}
@@ -311,11 +331,22 @@ func main() {
 6.改造原有customerService.go，使用数据库读取数据
 
 ```
+package service
+
+import (
+	"daprdemos/golang/customer/config/db"
+	"daprdemos/golang/customer/models"
+	pb "daprdemos/golang/customer/protos/customer_v1"
+)
+
+type CustomerService struct {
+}
+
 func (s *CustomerService) GetCustomerById(req *pb.IdRequest) pb.Customer {
 	var customer models.Customer
-	db.DB.First(&customer, req.Id)
+	db.DB.First(&customer, "id = ?", req.Id)
 	return pb.Customer{
-		Id:   int32(customer.ID),
+		Id:   customer.ID.String(),
 		Name: customer.Name,
 	}
 }
