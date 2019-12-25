@@ -203,3 +203,120 @@ func (s *server) OnInvoke(ctx context.Context, in *pb.InvokeEnvelope) (*any.Any,
 	return &any.Any{}, nil
 }
 ```
+
+### golang使用orm
+
+详细文档参见 https://gorm.io/zh_CN/docs/index.html 
+
+1.安装gorm
+
+```
+go get -u github.com/jinzhu/gorm
+```
+
+2.新建模型
+
+```
+package models
+
+import "github.com/jinzhu/gorm"
+
+type Customer struct {
+	gorm.Model
+	Name string
+}
+```
+
+`gorm.Model` 是一个包含了`ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt`四个字段的GoLang结构体。
+
+
+3.新建数据库迁移
+
+自动迁移 只会 创建表、缺失的列、缺失的索引， 不会 更改现有列的类型或删除未使用的列
+
+```
+package db
+
+import "daprdemos/golang/customer/models"
+
+func init() {
+	DB.AutoMigrate(&models.Customer{})
+}
+```
+
+4.连接数据库
+
+连接数据库的配置可以自己处理，当前代码使用了github.com/jinzhu/configor
+
+```
+package db
+
+import (
+	"daprdemos/golang/customer/config"
+	"fmt"
+
+	"github.com/jinzhu/gorm"
+
+	// 初始化mysql
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+)
+
+// DB Global DB connection
+var DB *gorm.DB
+
+func init() {
+	var err error
+
+	dbConfig := config.Config.DB
+	DB, err = gorm.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?parseTime=True&loc=Local", dbConfig.User, dbConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.Name))
+
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
+	}
+}
+```
+
+5.播种
+
+引用第4步的DB即可直接操作数据库
+
+```
+package main
+
+import (
+	"daprdemos/golang/customer/config/db"
+	"daprdemos/golang/customer/models"
+	"fmt"
+	"strconv"
+)
+
+func main() {
+	fmt.Println("start ...")
+	var count int
+	db.DB.Model(&models.Customer{}).Count(&count)
+	if count == 0 {
+		for index := 0; index < 100; index++ {
+			db.DB.Create(&models.Customer{
+				Name: "小红" + strconv.Itoa(index),
+			})
+		}
+	}
+	fmt.Println("done")
+}
+```
+
+首先创建一个新的数据库，然后运行main，即可创建表结构，并将初始化数据播种到数据库
+
+6.改造原有customerService.go，使用数据库读取数据
+
+```
+func (s *CustomerService) GetCustomerById(req *pb.IdRequest) pb.Customer {
+	var customer models.Customer
+	db.DB.First(&customer, req.Id)
+	return pb.Customer{
+		Id:   int32(customer.ID),
+		Name: customer.Name,
+	}
+}
+```
