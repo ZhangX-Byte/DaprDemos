@@ -7,10 +7,10 @@ service CustomerService {
 }
 
 message IdRequest {
-    int32 id = 1;
+    string id = 1;
 }
 
 message Customer {
-    int32 id = 1;
+    string id = 1;
     string name = 2;
 }

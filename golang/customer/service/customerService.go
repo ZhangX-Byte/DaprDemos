@@ -11,9 +11,9 @@ type CustomerService struct {
 
 func (s *CustomerService) GetCustomerById(req *pb.IdRequest) pb.Customer {
 	var customer models.Customer
-	db.DB.First(&customer, req.Id)
+	db.DB.First(&customer, "id = ?", req.Id)
 	return pb.Customer{
-		Id:   int32(customer.ID),
+		Id:   customer.ID.String(),
 		Name: customer.Name,
 	}
 }
