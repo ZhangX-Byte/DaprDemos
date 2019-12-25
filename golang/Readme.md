@@ -206,7 +206,7 @@ func (s *server) OnInvoke(ctx context.Context, in *pb.InvokeEnvelope) (*any.Any,
 
 ### golang使用orm
 
-详细文件参见 https://gorm.io/zh_CN/docs/index.html 
+详细文档参见 https://gorm.io/zh_CN/docs/index.html 
 
 1.安装gorm
 
@@ -306,7 +306,7 @@ func main() {
 }
 ```
 
-先到数据库
+首先创建一个新的数据库，然后运行main，即可创建表结构，并将初始化数据播种到数据库
 
 6.改造原有customerService.go，使用数据库读取数据
 
