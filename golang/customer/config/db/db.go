@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/gorm"
+
+	// 初始化mysql
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
