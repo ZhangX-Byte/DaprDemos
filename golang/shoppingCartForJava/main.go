@@ -69,9 +69,11 @@ func main() {
 	}
 	storageReduceDataData, err := ptypes.MarshalAny(storageReduceData)
 	if err != nil {
-		client.PublishEvent(context.Background(), &pb.PublishEventEnvelope{
-			Topic: "Storage.Reduce",
-			Data:  storageReduceDataData,
-		})
+		fmt.Println(err)
+		return
 	}
+	client.PublishEvent(context.Background(), &pb.PublishEventEnvelope{
+		Topic: "Storage.Reduce",
+		Data:  storageReduceDataData,
+	})
 }
