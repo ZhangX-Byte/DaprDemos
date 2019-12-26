@@ -47,13 +47,14 @@ func main() {
 	})
 	if err != nil {
 		fmt.Println(err)
-	} else {
-		createOrderResponse := &daprexamples.CreateOrderResponse{}
-
-		if err := proto.Unmarshal(response.Data.Value, createOrderResponse); err == nil {
-			fmt.Println(createOrderResponse.Succeed)
-		} else {
-			fmt.Println(err)
-		}
+		return
 	}
+
+	createOrderResponse := &daprexamples.CreateOrderResponse{}
+
+	if err := proto.Unmarshal(response.Data.Value, createOrderResponse); err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(createOrderResponse.Succeed)
 }

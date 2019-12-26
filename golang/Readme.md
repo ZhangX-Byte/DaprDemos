@@ -119,11 +119,11 @@ service CustomerService {
 }
 
 message IdRequest {
-    int32 id = 1;
+    string id = 1;
 }
 
 message Customer {
-    int32 id = 1;
+    string id = 1;
     string name = 2;
 }
 ```
@@ -201,5 +201,153 @@ func (s *server) OnInvoke(ctx context.Context, in *pb.InvokeEnvelope) (*any.Any,
 		return any, err
 	}
 	return &any.Any{}, nil
+}
+```
+
+### golang使用orm
+
+详细文档参见 https://gorm.io/zh_CN/docs/index.html 
+
+1.安装gorm
+
+```
+go get -u github.com/jinzhu/gorm
+```
+
+2.新建模型
+
+```
+package models
+
+import (
+	"github.com/google/uuid"
+	"github.com/jinzhu/gorm"
+)
+
+type Customer struct {
+	ID   uuid.UUID `gorm:"primary_key;type:varchar(36)"`
+	Name string
+}
+
+func (customer *Customer) BeforeCreate(scope *gorm.Scope) error {
+	if idField, ok := scope.FieldByName("ID"); ok {
+		if idField.IsBlank {
+			idField.Set(uuid.New())
+		}
+	}
+	return nil
+}
+
+```
+
+BeforeCreate是一个钩子函数，在创建对象前调用
+
+
+3.新建数据库迁移
+
+自动迁移 只会 创建表、缺失的列、缺失的索引， 不会 更改现有列的类型或删除未使用的列
+
+```
+package db
+
+import "daprdemos/golang/customer/models"
+
+func init() {
+	DB.AutoMigrate(&models.Customer{})
+}
+```
+
+4.连接数据库
+
+连接数据库的配置可以自己处理，当前代码使用了github.com/jinzhu/configor
+
+```
+package db
+
+import (
+	"daprdemos/golang/customer/config"
+	"fmt"
+
+	"github.com/jinzhu/gorm"
+
+	// 初始化mysql
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+)
+
+// DB Global DB connection
+var DB *gorm.DB
+
+func init() {
+	var err error
+
+	dbConfig := config.Config.DB
+	DB, err = gorm.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?parseTime=True&loc=Local", dbConfig.User, dbConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.Name))
+
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
+	}
+}
+```
+
+5.播种
+
+引用第4步的DB即可直接操作数据库
+
+```
+package main
+
+import (
+	"daprdemos/golang/customer/config/db"
+	"daprdemos/golang/customer/models"
+	"fmt"
+	"strconv"
+
+	"github.com/google/uuid"
+)
+
+func main() {
+	fmt.Println("start ...")
+	var count int
+	db.DB.Model(&models.Customer{}).Count(&count)
+	if count == 0 {
+		for index := 0; index < 100; index++ {
+			var guid uuid.UUID
+			if index == 0 {
+				guid, _ = uuid.Parse("1e88e584-dcbd-44f6-9960-53c2ad687399")
+			}
+			db.DB.Create(&models.Customer{
+				ID:   guid,
+				Name: "小红" + strconv.Itoa(index),
+			})
+		}
+	}
+	fmt.Println("done")
+}
+```
+
+首先创建一个新的数据库，然后运行main，即可创建表结构，并将初始化数据播种到数据库
+
+6.改造原有customerService.go，使用数据库读取数据
+
+```
+package service
+
+import (
+	"daprdemos/golang/customer/config/db"
+	"daprdemos/golang/customer/models"
+	pb "daprdemos/golang/customer/protos/customer_v1"
+)
+
+type CustomerService struct {
+}
+
+func (s *CustomerService) GetCustomerById(req *pb.IdRequest) pb.Customer {
+	var customer models.Customer
+	db.DB.First(&customer, "id = ?", req.Id)
+	return pb.Customer{
+		Id:   customer.ID.String(),
+		Name: customer.Name,
+	}
 }
 ```

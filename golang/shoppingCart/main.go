@@ -28,7 +28,7 @@ func main() {
 	client := pb.NewDaprClient(conn)
 
 	req := &customer_v1.IdRequest{
-		Id: 1,
+		Id: "1e88e584-dcbd-44f6-9960-53c2ad687399",
 	}
 	any, err := ptypes.MarshalAny(req)
 	if err != nil {
