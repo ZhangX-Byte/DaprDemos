@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package StorageReduceRequest;
+package daprexamples;
 
 option java_outer_classname = "DataToPublishProtos";
 option java_package = "generate.protos";
 
 message StorageReduceData {
-    string ProductID = 1;
-    int32 Amount=2;
+	string ProductID = 1;
+	int32 Amount=2;
 }

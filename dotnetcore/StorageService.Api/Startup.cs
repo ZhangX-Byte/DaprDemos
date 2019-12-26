@@ -52,8 +52,6 @@ namespace StorageService.Api
 
             app.UseRouting();
 
-            app.UseCloudEvents();
-
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapSubscribeHandler();

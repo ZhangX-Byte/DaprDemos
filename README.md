@@ -1195,98 +1195,12 @@ ProductService 提供两个服务
 
     * 引用 MyBatis 做为 Mapper 工具
     * 修改 HelloWorldService.java 文件，提取 GrpcHelloWorldDaprService.java 到单独的包中，在此文件中添加 `createOrder()` 、 `getOrderList()` 、 `retrieveOrder()` 三个函数的实现
-    * 在 `createOrder()` 函数中发布事件到 Storage.Reduce 主题
-      * 创建 DataToPublish.proto 文件
 
-        ``` proto
-        syntax = "proto3";
-
-        package daprexamples;
-
-        option java_outer_classname = "DataToPublishProtos";
-        option java_package = "generate.protos";
-
-        message StorageReduceData {
-            string ProductID = 1;
-            int32 Amount=2;
-        }
-        ```
-
-    * 生成代码
-
-        ``` cmd
-        protoc -I=C:\Users\JR\DaprDemos\java\examples\src\main\protos\examples --java_out=C:\Users\JR\DaprDemos\java\examples\src\main\java  C:\Users\JR\DaprDemos\java\examples\src\main\protos\examples\DataToPublish.proto
-        ```
-
-    * 创建 PublishMessageClient.java 以发布事件
-
-        ``` java
-        public class PublishMessageClient {
-
-            /**
-            * Client communication channel: host, port and tls(on/off)
-            */
-            private final ManagedChannel channel;
-
-            /**
-            * Calls will be done asynchronously.
-            */
-            private final DaprGrpc.DaprFutureStub client;
-
-            /**
-            * Creates a Grpc client for the DaprGrpc service.
-            *
-            * @param port port for the remote service endpoint
-            */
-            public PublishMessageClient(int port) {
-                this(ManagedChannelBuilder
-                        .forAddress("localhost", port)
-                        .usePlaintext()  // SSL/TLS is default, we turn it off just because this is a sample and not prod.
-                        .build());
-            }
-
-            /**
-            * Helper constructor to build client from channel.
-            *
-            * @param channel
-            */
-            private PublishMessageClient(ManagedChannel channel) {
-                this.channel = channel;
-                this.client = DaprGrpc.newFutureStub(channel);
-            }
-
-            /**
-            * Publish Event To StorageReduce topic
-            * @param storageReduceData
-            */
-            public void PublishToStorageReduce(DataToPublishProtos.StorageReduceData storageReduceData) {
-                DaprProtos.PublishEventEnvelope publishEventEnvelope = DaprProtos.PublishEventEnvelope.newBuilder().setTopic("Storage.Reduce").setData(Any.pack(storageReduceData)).build();
-                client.publishEvent(publishEventEnvelope);
-            }
-         }
-        ```
-
-    * 在 `onInvoke()` `createOrder` 分支发布消息
-
-        ``` java
-         case "createOrder":
-                    CreateOrderProtos.CreateOrderRequest createOrderRequest = CreateOrderProtos.CreateOrderRequest.parseFrom(request.getData().getValue());
-                    CreateOrderProtos.CreateOrderResponse createOrderResponse = this.createOrder(createOrderRequest);
-
-                    DataToPublishProtos.StorageReduceData storageReduceData = DataToPublishProtos.StorageReduceData.newBuilder().setProductID(createOrderRequest.getProductID()).setAmount(createOrderRequest.getAmount()).build();
-                    publishMessageClient.PublishToStorageReduce(storageReduceData);
-                    responseObserver.onNext(Any.pack(createOrderResponse));
-                    break;
-        ```
-
-    * 替换 messagebus.yaml 文件以通过 RabbitMQ 发布消息
     * 启动 OrderService 服务
 
         ``` Java
         dapr run --app-id OrderService --app-port 5000 --protocol grpc -- mvn exec:java -pl=examples -Dexec.mainClass=server.HelloWorldService -Dexec.args="-p 5000"
         ```
-
-    **注意**：值得关注的点在于，Java 同时相同的端口号接收数据和发布数据。即通过相同的端口接收 `createOrder()` 和 `publishEvent()` 。
 
 4. 创建 Golang Grpc 客户端，该客户端需要完成创建订单 Grpc 调用
 
@@ -1310,69 +1224,78 @@ ProductService 提供两个服务
         protoc -I C:\Users\JR\DaprDemos\golang\shoppingCartForJava\protos\daprexamples C:\Users\JR\DaprDemos\golang\shoppingCartForJava\protos\daprexamples\CreateOrder.proto --go_out=plugins=grpc:C:\Users\JR\DaprDemos\golang\shoppingCartForJava\protos\daprexamples\
         ```
 
-    * 客户端代码
+    * 客户端代码，创建订单
 
         ``` go
-        package main
+        ...
 
-        import (
-            "context"
-            "fmt"
-            "os"
-
-            pb "github.com/dapr/go-sdk/dapr"
-            "github.com/golang/protobuf/proto"
-            "github.com/golang/protobuf/ptypes"
-            "google.golang.org/grpc"
-
-            "daprdemos/golang/shoppingCart/protos/daprexamples"
-        )
-
-        func main() {
-            // Get the Dapr port and create a connection
-            daprPort := os.Getenv("DAPR_GRPC_PORT")
-            daprAddress := fmt.Sprintf("localhost:%s", daprPort)
-            conn, err := grpc.Dial(daprAddress, grpc.WithInsecure())
+         response, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
+            Id:     "OrderService",
+            Data:   createOrderRequestData,
+            Method: "createOrder",
+            })
             if err != nil {
                 fmt.Println(err)
                 return
             }
-            defer conn.Close()
 
-            // Create the client
-            client := pb.NewDaprClient(conn)
+        ...
+        ```
 
-            createOrderRequest := &daprexamples.CreateOrderRequest{
-                ProductID:  "095d1f49-41c8-4716-81f0-35e05303faea",
-                Amount:     20,
-                CustomerID: "0d158a88-73de-42e5-87c7-fdbc00bdc5f9",
-            }
-            createOrderRequestData, err := ptypes.MarshalAny(createOrderRequest)
-            if err != nil {
-                fmt.Println(createOrderRequestData)
-            } else {
-                fmt.Println(createOrderRequestData)
-            }
+    * 添加 DataToPublish.proto 文件，此文件作为事件发布数据结构
 
-            // Invoke a method called MyMethod on another Dapr enabled service with id client
-            response, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
-                Id:     "OrderService",
-                Data:   createOrderRequestData,
-                Method: "createOrder",
-            })
-            if err != nil {
-                fmt.Println(err)
-            } else {
-                createOrderResponse := &daprexamples.CreateOrderResponse{}
+        ``` proto
+        syntax = "proto3";
 
-                if err := proto.Unmarshal(response.Data.Value, createOrderResponse); err == nil {
-                    fmt.Println(createOrderResponse.Succeed)
-                } else {
-                    fmt.Println(err)
-                }
-            }
+        package daprexamples;
+
+        option java_outer_classname = "DataToPublishProtos";
+        option java_package = "generate.protos";
+
+        message StorageReduceData {
+            string ProductID = 1;
+            int32 Amount=2;
+        }
+        ```
+
+    * 生成 DataToPublish 代码
+
+        ``` cmd
+         protoc -I C:\Users\JR\DaprDemos\golang\shoppingCartForJava\protos\daprexamples C:\Users\JR\DaprDemos\golang\shoppingCartForJava\protos\daprexamples\DataToPublish.proto --go_out=plugins=grpc:C:\Users\JR\DaprDemos\golang\shoppingCartForJava\protos\daprexamples\
+        ```
+
+    * 修改 main.go 代码，根据 createOrder 结果判断是否要发布信息到消息队列
+
+        ``` go
+        ...
+
+        createOrderResponse := &daprexamples.CreateOrderResponse{}
+
+        if err := proto.Unmarshal(response.Data.Value, createOrderResponse); err != nil {
+            fmt.Println(err)
+            return
+        }
+        fmt.Println(createOrderResponse.Succeed)
+
+        if !createOrderResponse.Succeed {
+            //下单失败
+            return
         }
 
+        storageReduceData := &daprexamples.StorageReduceData{
+            ProductID: createOrderRequest.ProductID,
+            Amount:    createOrderRequest.Amount,
+        }
+        storageReduceDataData, err := ptypes.MarshalAny(storageReduceData)
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
+        client.PublishEvent(context.Background(), &pb.PublishEventEnvelope{
+            Topic: "Storage.Reduce",
+            Data:  storageReduceDataData,
+        })
+        ...
         ```
 
     * 启动 golang Grpc 客户端

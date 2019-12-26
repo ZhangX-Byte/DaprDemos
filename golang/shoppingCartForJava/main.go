@@ -38,7 +38,7 @@ func main() {
 	} else {
 		fmt.Println(createOrderRequestData)
 	}
-	
+
 	// Invoke a method called MyMethod on another Dapr enabled service with id client
 	response, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
 		Id:     "OrderService",
@@ -72,8 +72,15 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	client.PublishEvent(context.Background(), &pb.PublishEventEnvelope{
+
+	_, err = client.PublishEvent(context.Background(), &pb.PublishEventEnvelope{
 		Topic: "Storage.Reduce",
 		Data:  storageReduceDataData,
 	})
+
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println("Published message!")
+	}
 }
