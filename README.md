@@ -1015,7 +1015,7 @@ ProductService 提供两个服务
     * Docker 搭建 RabbitMQ 服务
 
         ``` cmd
-        docker run -d --hostname my-rabbit --name some-rabbit -p 15672:15672 rabbitmq:3-management
+        docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:3-management
         ```
 
     * 创建 messagebus.yaml
@@ -1024,12 +1024,12 @@ ProductService 提供两个服务
         apiVersion: dapr.io/v1alpha1
         kind: Component
         metadata:
-        name:messagebus
+        name: messagebus
         spec:
         type: pubsub.rabbitmq
         metadata:
         - name: host
-            value: "localhost:5672" # Required. Example: "rabbitmq.default.svc.cluster.local:5672"
+            value: "amqp://localhost:5672" # Required. Example: "rabbitmq.default.svc.cluster.local:5672"
         - name: consumerID
             value: "61415901178272324029" # Required. Any unique ID. Example: "myConsumerID"
         - name: durable
@@ -1094,6 +1094,7 @@ ProductService 提供两个服务
         /// <param name="services">Services.</param>
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddGrpc();
             services.AddDbContextPool<StorageContext>(options => { options.UseMySql(Configuration.GetConnectionString("MysqlConnection")); });
         }
         ```
@@ -1121,6 +1122,12 @@ ProductService 提供两个服务
                 endpoints.MapGrpcService<DaprClientService>();
             });
         }
+        ```
+
+    * 启动 StorageService 服务
+
+        ``` cmd
+        dapr run --app-id storageService --app-port 5003 --protocol grpc dotnet run
         ```
 
 3. 使用 Java 开发一个 Order 服务端，Order 服务提供的功能为
@@ -1273,3 +1280,131 @@ ProductService 提供两个服务
         ```
 
     * 替换 messagebus.yaml 文件以通过 RabbitMQ 发布消息
+    * 启动 OrderService 服务
+
+        ``` Java
+        dapr run --app-id OrderService --app-port 5000 --protocol grpc -- mvn exec:java -pl=examples -Dexec.mainClass=server.HelloWorldService -Dexec.args="-p 5000"
+        ```
+
+    **注意**：值得关注的点在于，Java 同时相同的端口号接收数据和发布数据。即通过相同的端口接收 `createOrder()` 和 `publishEvent()` 。
+
+4. 创建 Golang Grpc 客户端，该客户端需要完成创建订单 Grpc 调用
+
+    * 引用 CreateOrder.proto 文件，并生成 CreateOrder.pb.go 文件
+
+        如未安装 protoc-gen-gogo ,通过一下命令获取并安装
+
+        ``` cmd
+        go get github.com/gogo/protobuf/gogoproto
+        ```
+
+        安装 protoc-gen-gogo
+
+        ``` cmd
+        go install github.com/gogo/protobuf/gogoproto
+        ```
+
+        根据 proto 文件生成代码
+
+        ``` cmd
+        protoc -I C:\Users\JR\DaprDemos\golang\shoppingCartForJava\protos\daprexamples C:\Users\JR\DaprDemos\golang\shoppingCartForJava\protos\daprexamples\CreateOrder.proto --go_out=plugins=grpc:C:\Users\JR\DaprDemos\golang\shoppingCartForJava\protos\daprexamples\
+        ```
+
+    * 客户端代码
+
+        ``` go
+        package main
+
+        import (
+            "context"
+            "fmt"
+            "os"
+
+            pb "github.com/dapr/go-sdk/dapr"
+            "github.com/golang/protobuf/proto"
+            "github.com/golang/protobuf/ptypes"
+            "google.golang.org/grpc"
+
+            "daprdemos/golang/shoppingCart/protos/daprexamples"
+        )
+
+        func main() {
+            // Get the Dapr port and create a connection
+            daprPort := os.Getenv("DAPR_GRPC_PORT")
+            daprAddress := fmt.Sprintf("localhost:%s", daprPort)
+            conn, err := grpc.Dial(daprAddress, grpc.WithInsecure())
+            if err != nil {
+                fmt.Println(err)
+                return
+            }
+            defer conn.Close()
+
+            // Create the client
+            client := pb.NewDaprClient(conn)
+
+            createOrderRequest := &daprexamples.CreateOrderRequest{
+                ProductID:  "095d1f49-41c8-4716-81f0-35e05303faea",
+                Amount:     20,
+                CustomerID: "0d158a88-73de-42e5-87c7-fdbc00bdc5f9",
+            }
+            createOrderRequestData, err := ptypes.MarshalAny(createOrderRequest)
+            if err != nil {
+                fmt.Println(createOrderRequestData)
+            } else {
+                fmt.Println(createOrderRequestData)
+            }
+
+            // Invoke a method called MyMethod on another Dapr enabled service with id client
+            response, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
+                Id:     "OrderService",
+                Data:   createOrderRequestData,
+                Method: "createOrder",
+            })
+            if err != nil {
+                fmt.Println(err)
+            } else {
+                createOrderResponse := &daprexamples.CreateOrderResponse{}
+
+                if err := proto.Unmarshal(response.Data.Value, createOrderResponse); err == nil {
+                    fmt.Println(createOrderResponse.Succeed)
+                } else {
+                    fmt.Println(err)
+                }
+            }
+        }
+
+        ```
+
+    * 启动 golang Grpc 客户端
+
+        ``` cmd
+         dapr run --app-id client go run main.go
+        ```
+
+        输出
+
+        ``` cmd
+        == APP == true
+        ```
+
+5. RabbitMQ
+
+    * 在浏览器中输入 `http://localhost:15672/` ，账号和密码均为 guest
+    * 查看 Connections ，有3个连接
+      * 这个3个连接来自配置了 messagebus.yaml 组件的三个服务
+    * 查看 Exchanges
+
+        ``` cmd
+        Name            Type    Features    Message rate in Message rate out
+        (AMQP default)  direct  D
+        Storage.Reduce  fanout  D
+        amq.direct      direct  D
+        amq.fanout      fanout  D
+        ...
+        ```
+
+        着重看 Storage.Reduce ，可以看出 Dapr 运行时创建了一个 fanout 类型的 Exchange ，这表明该 Exhange 中的数据是广播的。
+
+    * 查看 Queues
+
+        Dapr 运行时创建了 storageService-Storage.Reduce ，该 Queue 绑定了 Storage.Reduce Exchange ，所以可以收到 Storage.Reduce 的广播数据。

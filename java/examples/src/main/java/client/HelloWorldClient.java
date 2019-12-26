@@ -2,8 +2,10 @@ package client;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.Any;
+import com.google.protobuf.Empty;
 import com.google.protobuf.InvalidProtocolBufferException;
 import generate.protos.DaprExamplesProtos;
+import generate.protos.DataToPublishProtos;
 import io.dapr.DaprGrpc;
 import io.dapr.DaprProtos;
 import io.dapr.DaprProtos.InvokeServiceResponseEnvelope;
@@ -79,7 +81,7 @@ public class HelloWorldClient {
                 // Now, wrap the request with Dapr's envelope.
                 DaprProtos.InvokeServiceEnvelope requestEnvelope = DaprProtos.InvokeServiceEnvelope
                         .newBuilder()
-                        .setId("hellogrpc")  // Service's identifier.
+                        .setId("OrderService")  // Service's identifier.
                         .setData(Any.pack(request))
                         .setMethod("say")  // The service's method to be invoked by Dapr.
                         .build();
@@ -94,6 +96,28 @@ public class HelloWorldClient {
                 // IMPORTANT: do not use Any.unpack(), use Type.ParseFrom() instead.
                 DaprExamplesProtos.SayResponse response = DaprExamplesProtos.SayResponse.parseFrom(data.getValue());
                 System.out.println("Client: got response => " + response.getTimestamp());
+            }
+        }
+
+        public void PublishMessage(){
+            DataToPublishProtos.StorageReduceData storageReduceData = DataToPublishProtos.StorageReduceData
+                    .newBuilder()
+                    .setProductID("095d1f49-41c8-4716-81f0-35e05303faea")
+                    .setAmount(3).build();
+
+            DaprProtos.PublishEventEnvelope request = DaprProtos.PublishEventEnvelope
+                    .newBuilder()
+                    .setTopic("Storage.Reduce")
+                    .setData(Any.pack(storageReduceData))
+                    .build();
+            ListenableFuture<Empty> future = this.client.publishEvent(request);
+
+            try {
+                future.get();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
             }
         }
 
@@ -119,7 +143,9 @@ public class HelloWorldClient {
         int port = Integer.parseInt(cmd.getOptionValue("port"));
 
         GrpcHelloWorldDaprClient helloWorldClient = new GrpcHelloWorldDaprClient("localhost", port);
-        helloWorldClient.sendMessages(cmd.getArgs());
+        //helloWorldClient.sendMessages(cmd.getArgs());
+
+        helloWorldClient.PublishMessage();
         helloWorldClient.shutdown();
     }
 }

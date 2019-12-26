@@ -25,6 +25,7 @@ public class HelloWorldService {
         int port = Integer.parseInt(cmd.getOptionValue("port"));
 
         final GrpcHelloWorldDaprService service = new GrpcHelloWorldDaprService();
+
         service.start(port);
         service.awaitTermination();
     }

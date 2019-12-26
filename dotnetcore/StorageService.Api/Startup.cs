@@ -34,6 +34,7 @@ namespace StorageService.Api
         /// <param name="services">Services.</param>
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddGrpc();
             services.AddDbContextPool<StorageContext>(options => { options.UseMySql(Configuration.GetConnectionString("MysqlConnection")); });
         }
 

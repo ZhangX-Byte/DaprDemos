@@ -4,7 +4,6 @@ import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
 import generate.protos.CreateOrderProtos;
 import generate.protos.DaprExamplesProtos;
-import generate.protos.DataToPublishProtos;
 import io.dapr.DaprClientGrpc;
 import io.dapr.DaprClientProtos;
 import io.grpc.Server;
@@ -37,8 +36,6 @@ public class GrpcHelloWorldDaprService extends DaprClientGrpc.DaprClientImplBase
      */
     private Server server;
 
-    private PublishMessageClient publishMessageClient;
-
     /**
      * Server mode: starts listening on given port.
      *
@@ -46,9 +43,6 @@ public class GrpcHelloWorldDaprService extends DaprClientGrpc.DaprClientImplBase
      * @throws IOException Errors while trying to start service.
      */
     public void start(int port) throws IOException {
-
-        publishMessageClient = new PublishMessageClient(port);
-
         this.server = ServerBuilder
                 .forPort(port)
                 .addService(this)
@@ -94,10 +88,8 @@ public class GrpcHelloWorldDaprService extends DaprClientGrpc.DaprClientImplBase
                 case "createOrder":
                     CreateOrderProtos.CreateOrderRequest createOrderRequest = CreateOrderProtos.CreateOrderRequest.parseFrom(request.getData().getValue());
                     CreateOrderProtos.CreateOrderResponse createOrderResponse = this.createOrder(createOrderRequest);
-
-                    DataToPublishProtos.StorageReduceData storageReduceData = DataToPublishProtos.StorageReduceData.newBuilder().setProductID(createOrderRequest.getProductID()).setAmount(createOrderRequest.getAmount()).build();
-                    publishMessageClient.PublishToStorageReduce(storageReduceData);
                     responseObserver.onNext(Any.pack(createOrderResponse));
+
                     break;
                 case "getOrderList":
                     CreateOrderProtos.GetOrderListRequest getOrderListRequest = CreateOrderProtos.GetOrderListRequest.parseFrom(request.getData().getValue());
@@ -110,6 +102,7 @@ public class GrpcHelloWorldDaprService extends DaprClientGrpc.DaprClientImplBase
                     responseObserver.onNext(Any.pack(retrieveOrderResponse));
                     break;
             }
+
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
             responseObserver.onError(e);

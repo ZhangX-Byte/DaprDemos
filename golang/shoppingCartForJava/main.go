@@ -28,9 +28,9 @@ func main() {
 	client := pb.NewDaprClient(conn)
 
 	createOrderRequest := &daprexamples.CreateOrderRequest{
-		ProductID:  "1",
+		ProductID:  "095d1f49-41c8-4716-81f0-35e05303faea",
 		Amount:     20,
-		CustomerID: "1",
+		CustomerID: "0d158a88-73de-42e5-87c7-fdbc00bdc5f9",
 	}
 	createOrderRequestData, err := ptypes.MarshalAny(createOrderRequest)
 	if err != nil {
@@ -38,12 +38,12 @@ func main() {
 	} else {
 		fmt.Println(createOrderRequestData)
 	}
-
+	
 	// Invoke a method called MyMethod on another Dapr enabled service with id client
 	response, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
 		Id:     "OrderService",
 		Data:   createOrderRequestData,
-		Method: "CreateOrder",
+		Method: "createOrder",
 	})
 	if err != nil {
 		fmt.Println(err)

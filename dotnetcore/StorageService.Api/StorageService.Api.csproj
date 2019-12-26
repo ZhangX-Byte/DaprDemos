@@ -35,6 +35,7 @@
     <Protobuf Include="Protos\productList.proto" GrpcServices="Server"></Protobuf>
     <Protobuf Include="Protos\daprclient.proto" GrpcServices="Server"></Protobuf>
     <Protobuf Include="Protos\dapr.proto" GrpcServices="Server"></Protobuf>
+    <Protobuf Include="Protos\DataToPublish.proto" GrpcServices="Server"></Protobuf>
   </ItemGroup>
 
   <ItemGroup>

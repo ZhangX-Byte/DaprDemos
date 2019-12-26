@@ -27,7 +27,6 @@ generate\protos\CreateOrderProtos$CreateOrderRequest.class
 generate\protos\DataToPublishProtos$StorageReduceData.class
 generate\protos\CreateOrderProtos$CreateOrderResponse.class
 server\mybatis\Order.class
-server\dapr\grpc\services\PublishMessageClient.class
 server\HelloWorldService.class
 generate\protos\CreateOrderProtos$CreateOrderRequest$Builder.class
 client\HelloWorldClient$GrpcHelloWorldDaprClient.class

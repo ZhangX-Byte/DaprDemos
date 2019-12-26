@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Daprclient;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -32,7 +31,6 @@ namespace ProductService.Api.GRPCServices
                     ProductList.V1.ProductList productsList = await _productListService.GetAllProducts(productListRequest, context);
                     return Any.Pack(productsList);
             }
-
             return null;
         }
     }

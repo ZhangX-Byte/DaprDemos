@@ -23,17 +23,17 @@ public class GrpcHelloWorldDaprServiceTest {
     public void getOrderList() {
         GrpcHelloWorldDaprService service=new GrpcHelloWorldDaprService();
         CreateOrderProtos.GetOrderListRequest.Builder request=CreateOrderProtos.GetOrderListRequest.newBuilder();
-        request.setCustomerID("4f6ec095-35b4-40f0-8cf5-a544712434e4");
+        request.setCustomerID("0d158a88-73de-42e5-87c7-fdbc00bdc5f9");
         CreateOrderProtos.GetOrderListResponse response=service.getOrderList(request.build());
-        assert response.getOrdersCount()==1;
+        assert response.getOrdersCount()>1;
     }
 
     @Test
     public void retrieveOrder() {
         GrpcHelloWorldDaprService service=new GrpcHelloWorldDaprService();
         CreateOrderProtos.RetrieveOrderRequest.Builder request=CreateOrderProtos.RetrieveOrderRequest.newBuilder();
-        request.setOrderID("45895e1b-79f3-48b8-9f99-8347a4f50a5e");
+        request.setOrderID("0d51d0e3-1fa7-4241-83ea-ddd2734c2595");
         CreateOrderProtos.RetrieveOrderResponse response=service.retrieveOrder(request.build());
-        assert response.getOrder().getAmount()==2;
+        assert response.getOrder().getAmount()==20;
     }
 }
