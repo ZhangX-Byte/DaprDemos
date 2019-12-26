@@ -10,7 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
 
-	"daprdemos/golang/shoppingCart/protos/daprexamples"
+	"daprdemos/golang/shoppingCartForJava/protos/daprexamples"
 )
 
 func main() {
@@ -57,4 +57,21 @@ func main() {
 		return
 	}
 	fmt.Println(createOrderResponse.Succeed)
+
+	if !createOrderResponse.Succeed {
+		//下单失败
+		return
+	}
+
+	storageReduceData := &daprexamples.StorageReduceData{
+		ProductID: createOrderRequest.ProductID,
+		Amount:    createOrderRequest.Amount,
+	}
+	storageReduceDataData, err := ptypes.MarshalAny(storageReduceData)
+	if err != nil {
+		client.PublishEvent(context.Background(), &pb.PublishEventEnvelope{
+			Topic: "Storage.Reduce",
+			Data:  storageReduceDataData,
+		})
+	}
 }
