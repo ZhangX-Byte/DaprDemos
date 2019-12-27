@@ -8,6 +8,8 @@ import (
 	pb "github.com/dapr/go-sdk/dapr"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
+	jsoniter "github.com/json-iterator/go"
 	"google.golang.org/grpc"
 
 	"daprdemos/golang/shoppingCartForJava/protos/daprexamples"
@@ -67,7 +69,7 @@ func main() {
 		ProductID: createOrderRequest.ProductID,
 		Amount:    createOrderRequest.Amount,
 	}
-	storageReduceDataData, err := ptypes.MarshalAny(storageReduceData)
+	storageReduceDataData, err := jsoniter.ConfigFastest.Marshal(storageReduceData) //ptypes.MarshalAny(storageReduceData)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -75,8 +77,10 @@ func main() {
 
 	_, err = client.PublishEvent(context.Background(), &pb.PublishEventEnvelope{
 		Topic: "Storage.Reduce",
-		Data:  storageReduceDataData,
+		Data:  &any.Any{Value: storageReduceDataData},
 	})
+
+	fmt.Println(storageReduceDataData)
 
 	if err != nil {
 		fmt.Println(err)

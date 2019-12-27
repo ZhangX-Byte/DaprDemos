@@ -16,6 +16,10 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 
 	pb "github.com/dapr/go-sdk/daprclient"
+	jsoniter "github.com/json-iterator/go"
+
+	"daprdemos/golang/shoppingCartForJava/protos/daprexamples"
+
 	"google.golang.org/grpc"
 )
 
@@ -65,7 +69,7 @@ func (s *server) OnInvoke(ctx context.Context, in *pb.InvokeEnvelope) (*any.Any,
 // To subscribe to a topic named TopicA
 func (s *server) GetTopicSubscriptions(ctx context.Context, in *empty.Empty) (*pb.GetTopicSubscriptionsEnvelope, error) {
 	return &pb.GetTopicSubscriptionsEnvelope{
-		Topics: []string{"TopicA"},
+		Topics: []string{"Test", "Storage.Reduce"},
 	}, nil
 }
 
@@ -86,5 +90,11 @@ func (s *server) OnBindingEvent(ctx context.Context, in *pb.BindingEventEnvelope
 // This method is fired whenever a message has been published to a topic that has been subscribed. Dapr sends published messages in a CloudEvents 0.3 envelope.
 func (s *server) OnTopicEvent(ctx context.Context, in *pb.CloudEventEnvelope) (*empty.Empty, error) {
 	fmt.Println("Topic message arrived")
+	switch in.Topic {
+	case "Storage.Reduce":
+		var storageReduceData daprexamples.StorageReduceData
+		jsoniter.ConfigFastest.Unmarshal(in.Data.Value, &storageReduceData)
+		fmt.Println(storageReduceData)
+	}
 	return &empty.Empty{}, nil
 }
