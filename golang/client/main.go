@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 
+	"daprdemos/golang/client/protos/productlist_v1"
+	"daprdemos/golang/client/protos/shoppingCart"
+
 	pb "github.com/dapr/go-sdk/dapr"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/grpc"
-
-	"daprdemos/golang/client/protos/productlist_v1"
-	"daprdemos/golang/client/protos/shoppingCart"
 )
 
 func main() {
@@ -29,46 +30,52 @@ func main() {
 	client := pb.NewDaprClient(conn)
 
 	//获取产品列表
+	productList := getAllProducts(client)
+
+	//加入产品到购物车
+	addProduct(client, productList.Results[0].ID)
+
+	//获取购物车
+	getShoppingCart(client)
+}
+
+func getAllProducts(client pb.DaprClient) *productlist_v1.ProductList {
 	fmt.Println("获取产品列表")
-	productListRequest := &productlist_v1.ProductListRequest{}
-	data, err := ptypes.MarshalAny(productListRequest)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(data)
-	}
 	response, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
 		Id:     "productService",
-		Data:   data,
+		Data:   &any.Any{},
 		Method: "GetAllProducts",
 	})
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil
 	}
 
 	productList := &productlist_v1.ProductList{}
 	if err := proto.Unmarshal(response.Data.Value, productList); err != nil {
 		fmt.Println(err)
-		return
+		return nil
 	}
 	for _, product := range productList.Results {
 		fmt.Println(product.ID)
 	}
 
-	//加入产品到购物车
+	return productList
+}
+
+func addProduct(client pb.DaprClient, productID string) {
 	fmt.Println("加入产品到购物车")
 	addProductRequest := &shoppingCart.AddProductRequest{
-		ProductID: productList.Results[0].ID,
+		ProductID: productID,
 	}
-	data, err = ptypes.MarshalAny(addProductRequest)
+	data, err := ptypes.MarshalAny(addProductRequest)
 	if err != nil {
 		fmt.Println(err)
 	} else {
 		fmt.Println(data)
 	}
 
-	response, err = client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
+	response, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
 		Id:     "shoppingCartService",
 		Data:   data,
 		Method: "AddProduct",
@@ -84,12 +91,13 @@ func main() {
 		return
 	}
 	fmt.Println(addProductResponse.Succeed)
+}
 
-	//获取购物车
+func getShoppingCart(client pb.DaprClient) {
 	fmt.Println("获取购物车")
-	response, err = client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
+	response, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
 		Id:     "shoppingCartService",
-		Data:   data,
+		Data:   &any.Any{},
 		Method: "GetShoppingCart",
 	})
 	if err != nil {
