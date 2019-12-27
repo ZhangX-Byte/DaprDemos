@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/empty"
 
+	"daprdemos/golang/client/protos/productlist_v1"
 	"daprdemos/golang/server/protos/shoppingCart"
 
+	pbDapr "github.com/dapr/go-sdk/dapr"
 	pb "github.com/dapr/go-sdk/daprclient"
 	"google.golang.org/grpc"
 )
@@ -58,6 +61,7 @@ func (s *server) OnInvoke(ctx context.Context, in *pb.InvokeEnvelope) (*any.Any,
 
 	switch in.Method {
 	case "AddProduct":
+		getAllProducts()
 		addProductRequest := &shoppingCart.AddProductRequest{}
 		if err := proto.Unmarshal(in.Data.Value, addProductRequest); err != nil {
 			fmt.Println(err)
@@ -100,4 +104,46 @@ func (s *server) OnBindingEvent(ctx context.Context, in *pb.BindingEventEnvelope
 func (s *server) OnTopicEvent(ctx context.Context, in *pb.CloudEventEnvelope) (*empty.Empty, error) {
 	fmt.Println("Topic message arrived")
 	return &empty.Empty{}, nil
+}
+
+func getAllProducts() {
+	daprPort := os.Getenv("DAPR_GRPC_PORT")
+	daprAddress := fmt.Sprintf("localhost:%s", daprPort)
+	conn, err := grpc.Dial(daprAddress, grpc.WithInsecure())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer conn.Close()
+
+	// Create the client
+	client := pbDapr.NewDaprClient(conn)
+
+	//获取产品列表
+	fmt.Println("获取产品列表")
+	productListRequest := &productlist_v1.ProductListRequest{}
+	data, err := ptypes.MarshalAny(productListRequest)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(data)
+	}
+	response, err := client.InvokeService(context.Background(), &pbDapr.InvokeServiceEnvelope{
+		Id:     "productService",
+		Data:   data,
+		Method: "GetAllProducts",
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	productList := &productlist_v1.ProductList{}
+	if err := proto.Unmarshal(response.Data.Value, productList); err != nil {
+		fmt.Println(err)
+		return
+	}
+	for _, product := range productList.Results {
+		fmt.Println(product.ID)
+	}
 }
