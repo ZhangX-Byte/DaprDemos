@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package shoppingCart;
+
+service ShoppingCartService{
+	rpc AddProduct(AddProductRequest) returns(AddProductResponse);
+	rpc GetShoppingCart(Empty) returns(GetShoppingCartResponse);
+}
+
+message AddProductRequest{
+    string ProductID = 1;
+}
+
+message AddProductResponse {
+    bool Succeed = 1;
+}
+
+message GetShoppingCartResponse {
+    repeated string ProductID = 1;
+}
+
+message Empty {
+
+}
