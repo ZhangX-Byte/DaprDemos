@@ -30,7 +30,7 @@ namespace StorageService.Api.GrpcServices
         {
             if (request.Topic.Equals("Storage.Reduce"))
             {
-                StorageReduceData storageReduceData = StorageReduceData.Parser.ParseFrom(request.Data.Value);
+                StorageReduceData storageReduceData = StorageReduceData.Parser.ParseJson(request.Data.Value.ToStringUtf8());
                 Console.WriteLine("ProductID:" + storageReduceData.ProductID);
                 Console.WriteLine("Amount:" + storageReduceData.Amount);
                 await HandlerStorageReduce(storageReduceData);

@@ -10,6 +10,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
 
+	"github.com/golang/protobuf/ptypes/any"
+
 	"daprdemos/golang/shoppingCart/protos/customer_v1"
 )
 
@@ -30,17 +32,17 @@ func main() {
 	req := &customer_v1.IdRequest{
 		Id: "1e88e584-dcbd-44f6-9960-53c2ad687399",
 	}
-	any, err := ptypes.MarshalAny(req)
+	data, err := ptypes.MarshalAny(req)
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		fmt.Println(any)
+		fmt.Println(data)
 	}
 
 	// Invoke a method called MyMethod on another Dapr enabled service with id client
 	resp, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
 		Id:     "CustomerService",
-		Data:   any,
+		Data:   data,
 		Method: "GetCustomerById",
 	})
 	if err != nil {
@@ -51,6 +53,12 @@ func main() {
 		if err := proto.Unmarshal(resp.Data.Value, result); err == nil {
 			fmt.Println(result)
 			fmt.Println(result.Name)
+			client.PublishEvent(context.Background(), &pb.PublishEventEnvelope{
+				Topic: "Test",
+				Data: &any.Any{
+					Value: []byte(result.Name),
+				},
+			})
 		} else {
 			fmt.Println(err)
 		}
