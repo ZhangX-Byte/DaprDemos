@@ -5,21 +5,29 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/empty"
 
+	"daprdemos/golang/client/protos/productlist_v1"
+	"daprdemos/golang/server/protos/shoppingCart"
+
+	pbDapr "github.com/dapr/go-sdk/dapr"
 	pb "github.com/dapr/go-sdk/daprclient"
 	"google.golang.org/grpc"
 )
 
 // server is our user app
 type server struct {
+	productIDs []string
 }
 
 func main() {
 	// create listiner
-	lis, err := net.Listen("tcp", ":4000")
+	lis, err := net.Listen("tcp", ":4001")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -36,25 +44,38 @@ func main() {
 	}
 }
 
-// Sample method to invoke
-func (s *server) MyMethod() string {
-	return "Hi there!"
+func (s *server) AddProduct(addProductRequest *shoppingCart.AddProductRequest) *shoppingCart.AddProductResponse {
+	s.productIDs = append(s.productIDs, addProductRequest.ProductID)
+	return &shoppingCart.AddProductResponse{Succeed: true}
+}
+
+func (s *server) GetShoppingCart() (result shoppingCart.GetShoppingCartResponse) {
+	result.ProductID = s.productIDs
+	return
 }
 
 // This method gets invoked when a remote service has called the app through Dapr
 // The payload carries a Method to identify the method, a set of metadata properties and an optional payload
 func (s *server) OnInvoke(ctx context.Context, in *pb.InvokeEnvelope) (*any.Any, error) {
-	var response string
-
-	fmt.Println(fmt.Sprintf("Got invoked with: %s", string(in.Data.Value)))
+	fmt.Println(fmt.Sprintf("Got invoked by %s with: %s", in.Method, string(in.Data.Value)))
 
 	switch in.Method {
-	case "MyMethod":
-		response = s.MyMethod()
+	case "AddProduct":
+		getAllProducts()
+		addProductRequest := &shoppingCart.AddProductRequest{}
+		if err := proto.Unmarshal(in.Data.Value, addProductRequest); err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+		addProductResponse := s.AddProduct(addProductRequest)
+		any, err := ptypes.MarshalAny(addProductResponse)
+		return any, err
+	case "GetShoppingCart":
+		getShoppingCartResponse := s.GetShoppingCart()
+		any, err := ptypes.MarshalAny(&getShoppingCartResponse)
+		return any, err
 	}
-	return &any.Any{
-		Value: []byte(response),
-	}, nil
+	return &any.Any{}, nil
 }
 
 // Dapr will call this method to get the list of topics the app wants to subscribe to. In this example, we are telling Dapr
@@ -83,4 +104,46 @@ func (s *server) OnBindingEvent(ctx context.Context, in *pb.BindingEventEnvelope
 func (s *server) OnTopicEvent(ctx context.Context, in *pb.CloudEventEnvelope) (*empty.Empty, error) {
 	fmt.Println("Topic message arrived")
 	return &empty.Empty{}, nil
+}
+
+func getAllProducts() {
+	daprPort := os.Getenv("DAPR_GRPC_PORT")
+	daprAddress := fmt.Sprintf("localhost:%s", daprPort)
+	conn, err := grpc.Dial(daprAddress, grpc.WithInsecure())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer conn.Close()
+
+	// Create the client
+	client := pbDapr.NewDaprClient(conn)
+
+	//获取产品列表
+	fmt.Println("获取产品列表")
+	productListRequest := &productlist_v1.ProductListRequest{}
+	data, err := ptypes.MarshalAny(productListRequest)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(data)
+	}
+	response, err := client.InvokeService(context.Background(), &pbDapr.InvokeServiceEnvelope{
+		Id:     "productService",
+		Data:   data,
+		Method: "GetAllProducts",
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	productList := &productlist_v1.ProductList{}
+	if err := proto.Unmarshal(response.Data.Value, productList); err != nil {
+		fmt.Println(err)
+		return
+	}
+	for _, product := range productList.Results {
+		fmt.Println(product.ID)
+	}
 }
