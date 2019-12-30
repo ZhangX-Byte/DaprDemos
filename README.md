@@ -1018,7 +1018,7 @@ ProductService 提供两个服务
         docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:3-management
         ```
 
-    * 创建 messagebus.yaml
+    * 创建 rabbiqmq.yaml
 
         ``` yaml
         apiVersion: dapr.io/v1alpha1
@@ -1114,8 +1114,6 @@ ProductService 提供两个服务
 
             app.UseRouting();
 
-            app.UseCloudEvents();
-
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapSubscribeHandler();
@@ -1123,6 +1121,8 @@ ProductService 提供两个服务
             });
         }
         ```
+
+    * 复制 rabbimq.yaml 文件到 components 文件夹中，删除 redis_messagebus.yaml 文件
 
     * 启动 StorageService 服务
 
@@ -1195,14 +1195,14 @@ ProductService 提供两个服务
 
     * 引用 MyBatis 做为 Mapper 工具
     * 修改 HelloWorldService.java 文件，提取 GrpcHelloWorldDaprService.java 到单独的包中，在此文件中添加 `createOrder()` 、 `getOrderList()` 、 `retrieveOrder()` 三个函数的实现
-
+    * 复制 rabbimq.yaml 文件到 components 文件夹中，删除原有 redis_messagebus.yaml 文件
     * 启动 OrderService 服务
 
         ``` Java
         dapr run --app-id OrderService --app-port 5000 --protocol grpc -- mvn exec:java -pl=examples -Dexec.mainClass=server.HelloWorldService -Dexec.args="-p 5000"
         ```
 
-4. 创建 Golang Grpc 客户端，该客户端需要完成创建订单 Grpc 调用
+4. 创建 Golang Grpc 客户端，该客户端需要完成创建订单 Grpc 调用，订单创建成功发布扣除库存事件
 
     * 引用 CreateOrder.proto 文件，并生成 CreateOrder.pb.go 文件
 
@@ -1269,7 +1269,7 @@ ProductService 提供两个服务
         ``` go
         ...
 
-        createOrderResponse := &daprexamples.CreateOrderResponse{}
+       createOrderResponse := &daprexamples.CreateOrderResponse{}
 
         if err := proto.Unmarshal(response.Data.Value, createOrderResponse); err != nil {
             fmt.Println(err)
@@ -1286,18 +1286,30 @@ ProductService 提供两个服务
             ProductID: createOrderRequest.ProductID,
             Amount:    createOrderRequest.Amount,
         }
-        storageReduceDataData, err := ptypes.MarshalAny(storageReduceData)
+        storageReduceDataData, err := jsoniter.ConfigFastest.Marshal(storageReduceData) //ptypes.MarshalAny(storageReduceData)
         if err != nil {
             fmt.Println(err)
             return
         }
-        client.PublishEvent(context.Background(), &pb.PublishEventEnvelope{
+
+        _, err = client.PublishEvent(context.Background(), &pb.PublishEventEnvelope{
             Topic: "Storage.Reduce",
-            Data:  storageReduceDataData,
+            Data:  &any.Any{Value: storageReduceDataData},
         })
+
+        fmt.Println(storageReduceDataData)
+
+        if err != nil {
+            fmt.Println(err)
+        } else {
+            fmt.Println("Published message!")
+        }
         ...
         ```
 
+        **注意：** 发送数据前，使用 jsoniter 转换数据为 json 字符串，原因是如果直接传输 Grpc 流，当前版本(0.3.x) Dapr runtime 打包数据时使用 Json 打包，解包使用 String ，导致数据不一致。
+
+    * 复制 rabbimq.yaml 文件到 components 文件夹，删除原有 redis_messagebus.yaml 文件
     * 启动 golang Grpc 客户端
 
         ``` cmd
@@ -1308,6 +1320,7 @@ ProductService 提供两个服务
 
         ``` cmd
         == APP == true
+        == APP == Published message!
         ```
 
 5. RabbitMQ
@@ -1331,3 +1344,93 @@ ProductService 提供两个服务
     * 查看 Queues
 
         Dapr 运行时创建了 storageService-Storage.Reduce ，该 Queue 绑定了 Storage.Reduce Exchange ，所以可以收到 Storage.Reduce 的广播数据。
+
+6. DotNet Core StorageService.Api 改造以完成 Sub 事件
+
+    * 打开 DaprClientService.cs 文件，更改内容为
+
+        ``` csharp
+        public sealed class DaprClientService : DaprClient.DaprClientBase
+        {
+            private readonly StorageContext _storageContext;
+
+            public DaprClientService(StorageContext storageContext)
+            {
+                _storageContext = storageContext;
+            }
+
+            public override Task<GetTopicSubscriptionsEnvelope> GetTopicSubscriptions(Empty request, ServerCallContext context)
+            {
+                var topicSubscriptionsEnvelope = new GetTopicSubscriptionsEnvelope();
+                topicSubscriptionsEnvelope.Topics.Add("Storage.Reduce");
+                return Task.FromResult(topicSubscriptionsEnvelope);
+            }
+
+            public override async Task<Empty> OnTopicEvent(CloudEventEnvelope request, ServerCallContext context)
+            {
+                if (request.Topic.Equals("Storage.Reduce"))
+                {
+                    StorageReduceData storageReduceData = StorageReduceData.Parser.ParseJson(request.Data.Value.ToStringUtf8());
+                    Console.WriteLine("ProductID:" + storageReduceData.ProductID);
+                    Console.WriteLine("Amount:" + storageReduceData.Amount);
+                    await HandlerStorageReduce(storageReduceData);
+                }
+                return new Empty();
+            }
+
+            private async Task HandlerStorageReduce(StorageReduceData storageReduceData)
+            {
+                Guid productID = Guid.Parse(storageReduceData.ProductID);
+                Storage storageFromDb = await _storageContext.Storage.FirstOrDefaultAsync(q => q.ProductID.Equals(productID));
+                if (storageFromDb == null)
+                {
+                    return;
+                }
+
+                if (storageFromDb.Amount < storageReduceData.Amount)
+                {
+                    return;
+                }
+
+                storageFromDb.Amount -= storageReduceData.Amount;
+                Console.WriteLine(storageFromDb.Amount);
+                await _storageContext.SaveChangesAsync();
+            }
+        ```
+
+    * 说明
+      * 添加 `GetTopicSubscriptions()` 将完成对主题的关注
+        * 当应用停止时，RabbitMQ 中的 Queue 自动删除
+        * 添加 `OnTopicEvent()` 重写，此方法将完成对 Sub 主题的事件处理
+      * `HandlerStorageReduce` 用于减少库存
+
+7. 启动 DotNet Core StorageService.Api Grpc 服务，启动 Java OrderService Grpc 服务，启动 Go Grpc 客户端
+
+    * DotNet Core
+
+        ``` cmd
+        dapr run --app-id storageService --app-port 5003 --protocol grpc dotnet run
+        ```
+
+    * Java
+
+        ``` cmd
+        dapr run --app-id OrderService --app-port 5000 --protocol grpc -- mvn exec:java -pl=examples -Dexec.mainClass=server.HelloWorldService -Dexec.args="-p 5000"
+        ```
+
+    * go
+
+        ``` cmd
+        dapr run --app-id client  go run main.go
+        ```
+
+        go grpc 输出为
+
+        ``` cmd
+        == APP == true
+        == APP == Published message!
+        ```
+
+    查看 MySql Storage 数据库，对应产品库存减少 20
+
+至此，通过 Dapr runtime 完成了 Go 和 Java 之间的 Grpc 调用，并通过 RabbitMQ 组件完成了 Pub/Sub

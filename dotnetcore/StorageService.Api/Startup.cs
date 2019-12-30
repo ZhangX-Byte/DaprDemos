@@ -54,7 +54,6 @@ namespace StorageService.Api
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapSubscribeHandler();
                 endpoints.MapGrpcService<DaprClientService>();
             });
         }

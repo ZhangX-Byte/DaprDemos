@@ -10,5 +10,6 @@ require (
 	github.com/jinzhu/gorm v1.9.11
 	github.com/json-iterator/go v1.1.9
 	github.com/satori/go.uuid v1.2.0 // indirect
+	golang.org/x/tools v0.0.0-20191227053925-7b8e75db28f4 // indirect
 	google.golang.org/grpc v1.25.1
 )
