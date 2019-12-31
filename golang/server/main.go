@@ -90,13 +90,14 @@ func (s *server) GetTopicSubscriptions(ctx context.Context, in *empty.Empty) (*p
 // To invoke our app with a binding named storage
 func (s *server) GetBindingsSubscriptions(ctx context.Context, in *empty.Empty) (*pb.GetBindingsSubscriptionsEnvelope, error) {
 	return &pb.GetBindingsSubscriptionsEnvelope{
-		Bindings: []string{"storage"},
+		Bindings: []string{"bindings-rabbitmq"},
 	}, nil
 }
 
 // This method gets invoked every time a new event is fired from a registerd binding. The message carries the binding name, a payload and optional metadata
 func (s *server) OnBindingEvent(ctx context.Context, in *pb.BindingEventEnvelope) (*pb.BindingResponseEnvelope, error) {
 	fmt.Println("Invoked from binding")
+	fmt.Println(string(in.Data.Value))
 	return &pb.BindingResponseEnvelope{}, nil
 }
 

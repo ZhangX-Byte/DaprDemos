@@ -1,0 +1,15 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: bindings-rabbitmq
+spec:
+  type: bindings.rabbitmq
+  metadata:
+  - name: queueName
+    value: dapr-bindings
+  - name: host
+    value: amqp://localhost:5672
+  - name: durable
+    value: true
+  - name: deleteWhenUnused
+    value: false
