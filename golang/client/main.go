@@ -29,6 +29,11 @@ func main() {
 	// Create the client
 	client := pb.NewDaprClient(conn)
 
+	client.InvokeBinding(context.Background(), &pb.InvokeBindingEnvelope{
+		Name: "bindings-rabbitmq",
+		Data: &any.Any{Value: []byte("Hello World!!!!")},
+	})
+
 	//获取产品列表
 	productList := getAllProducts(client)
 

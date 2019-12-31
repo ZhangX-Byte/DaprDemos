@@ -2,27 +2,27 @@
 
 ## golang调用.net
 
-本例子用来演示调用已有的.net ProductService的gRPC服务的GetAllProducts方法
+本例子用来演示调用已有的 .net ProductService 的 gRPC 服务的 GetAllProducts 方法
 
-1.启动.net ProductService的gRPC服务
+1.启动 .net ProductService 的 gRPC 服务
 
-```
+``` cmd
 dapr run --app-id productService --app-port 5001 --protocol grpc dotnet run
 ```
 
 2.启动golang的客户端进行调用
 
-golang的例子代码在https://github.com/SoMeDay-Zhang/DaprDemos/tree/master/golang/client 下
+golang的例子代码在 [这里](https://github.com/SoMeDay-Zhang/DaprDemos/tree/master/golang/client)
 
 在client目录下运行命令
 
-```
+``` cmd
 dapr run --app-id client go run ./
 ```
 
 当可以看到以下输出证明调用成功
 
-```
+``` cmd
 ?[0m?[94;1m== APP == 0025844d-479c-4b1e-8444-5bcd48934523
 ?[0m?[94;1m== APP == 018f1680-1dd0-4a6a-adac-64377ec55e3d
 ?[0m?[94;1m== APP == 039922d6-970e-4e2f-b6f9-15cd2a4d1641
@@ -33,20 +33,20 @@ dapr run --app-id client go run ./
 
 3.golang开发
 
-先试用proto文件生成pb.go文件，复制.net项目里的 productList.proto 到 client/proros/productlist_v1/ 文件夹下，在该目录下执行命令
+先试用 proto 文件生成 pb.go 文件，复制 .net 项目里的 productList.proto 到 client/proros/productlist_v1/ 文件夹下，在该目录下执行命令
 
-```
+``` cmd
 protoc --go_out=plugins=grpc:. *.proto
 ```
 
-正常情况是会在该目录下生成 productList.pb.go 文件   
-如果没有生成，则需要安装这个： https://github.com/golang/protobuf 
+正常情况是会在该目录下生成 productList.pb.go 文件  
+如果没有生成，则需要安装 [protobuf](https://github.com/golang/protobuf)  
 
 4.具体代码详解
 
-初始化daprClient
+初始化 daprClient  
 
-```
+``` go
 	// Get the Dapr port and create a connection
 	daprPort := os.Getenv("DAPR_GRPC_PORT")
 	daprAddress := fmt.Sprintf("localhost:%s", daprPort)
@@ -61,9 +61,9 @@ protoc --go_out=plugins=grpc:. *.proto
 	client := pb.NewDaprClient(conn)
 ```
 
-初始化请求GetAllProducts方法的调用参数
+初始化请求 GetAllProducts 方法的调用参数
 
-```
+``` go
 req := &productlist_v1.ProductListRequest{}
 	any, err := ptypes.MarshalAny(req)
 	if err != nil {
@@ -75,7 +75,7 @@ req := &productlist_v1.ProductListRequest{}
 
 调用微服务
 
-```
+``` go
 	// Invoke a method called MyMethod on another Dapr enabled service with id client
 	resp, err := client.InvokeService(context.Background(), &pb.InvokeServiceEnvelope{
 		Id:     "productService",
@@ -86,7 +86,7 @@ req := &productlist_v1.ProductListRequest{}
 
 解析返回数据
 
-```
+``` go
     result := &productlist_v1.ProductList{}
 
 		if err := proto.Unmarshal(resp.Data.Value, result); err == nil {
@@ -98,10 +98,9 @@ req := &productlist_v1.ProductListRequest{}
 		}
 ```
 
-
 ## golang调用golang
 
-服务端代码在customer下   
+服务端代码在 customer 下  
 客户端代码在shoppingCart下  
 客户端代码与 golang调用.net 基本一致  
 
@@ -109,7 +108,7 @@ req := &productlist_v1.ProductListRequest{}
 
 1.新建 customer.proto 文件 定义传输规范
 
-```
+``` go
 syntax = "proto3";
 
 package customer.v1;
@@ -130,13 +129,13 @@ message Customer {
 
 然后生成 customer.pb.go 文件
 
-```
+``` go
 protoc --go_out=plugins=grpc:. *.proto
 ```
 
 2.新建 customerService.go 文件，用来进行服务端处理
 
-```
+``` go
 package service
 
 import (
@@ -157,9 +156,9 @@ func (s *CustomerService) GetCustomerById(req *pb.IdRequest) pb.Customer {
 
 3.新建 main.go 入口文件
 
-监听grpc服务并注册DaprClientServer
+监听 grpc 服务并注册 DaprClientServer  
 
-```
+``` go
 func main() {
 	// create listiner
 	lis, err := net.Listen("tcp", ":4000")
@@ -180,9 +179,9 @@ func main() {
 }
 ```
 
-实现DaprClientServer
+实现 DaprClientServer  
 
-```
+``` go
 type server struct {
 }
 
@@ -204,19 +203,19 @@ func (s *server) OnInvoke(ctx context.Context, in *pb.InvokeEnvelope) (*any.Any,
 }
 ```
 
-### golang使用orm
+### golang 使用 orm
 
-详细文档参见 https://gorm.io/zh_CN/docs/index.html 
+详细文档参见 [gorm](https://gorm.io/zh_CN/docs/index.html)  
 
 1.安装gorm
 
-```
+``` cmd
 go get -u github.com/jinzhu/gorm
 ```
 
 2.新建模型
 
-```
+``` go
 package models
 
 import (
@@ -242,12 +241,11 @@ func (customer *Customer) BeforeCreate(scope *gorm.Scope) error {
 
 BeforeCreate是一个钩子函数，在创建对象前调用
 
-
 3.新建数据库迁移
 
 自动迁移 只会 创建表、缺失的列、缺失的索引， 不会 更改现有列的类型或删除未使用的列
 
-```
+``` go
 package db
 
 import "daprdemos/golang/customer/models"
@@ -259,9 +257,9 @@ func init() {
 
 4.连接数据库
 
-连接数据库的配置可以自己处理，当前代码使用了github.com/jinzhu/configor
+连接数据库的配置可以自己处理，当前代码使用了 `github.com/jinzhu/configor`
 
-```
+``` go
 package db
 
 import (
@@ -292,9 +290,9 @@ func init() {
 
 5.播种
 
-引用第4步的DB即可直接操作数据库
+引用第4步的 DB 即可直接操作数据库
 
-```
+``` go
 package main
 
 import (
@@ -326,11 +324,11 @@ func main() {
 }
 ```
 
-首先创建一个新的数据库，然后运行main，即可创建表结构，并将初始化数据播种到数据库
+首先创建一个新的数据库，然后运行 main ，即可创建表结构，并将初始化数据播种到数据库
 
-6.改造原有customerService.go，使用数据库读取数据
+6.改造原有 customerService.go ，使用数据库读取数据
 
-```
+``` go
 package service
 
 import (
@@ -351,3 +349,108 @@ func (s *CustomerService) GetCustomerById(req *pb.IdRequest) pb.Customer {
 	}
 }
 ```
+
+### Binding
+
+#### 使用 rabbitmq 现实 input binding  
+
+本例子项目在server目录下
+
+1.新建 components 配置文件 rabbitmq_binding.yaml  
+
+``` yaml
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: bindings-rabbitmq
+spec:
+  type: bindings.rabbitmq
+  metadata:
+  - name: queueName
+    value: dapr-bindings
+  - name: host
+    value: amqp://localhost:5672
+  - name: durable
+    value: true
+  - name: deleteWhenUnused
+    value: false
+```
+
+2.监听 binding  
+
+这里的 Bindings 对应配置文件里的 metadata -> name
+
+``` go
+func (s *server) GetBindingsSubscriptions(ctx context.Context, in *empty.Empty) (*pb.GetBindingsSubscriptionsEnvelope, error) {
+	return &pb.GetBindingsSubscriptionsEnvelope{
+		Bindings: []string{"bindings-rabbitmq"},
+	}, nil
+}
+```
+
+3.处理binding
+
+``` go
+func (s *server) OnBindingEvent(ctx context.Context, in *pb.BindingEventEnvelope) (*pb.BindingResponseEnvelope, error) {
+	fmt.Println("Invoked from binding")
+	fmt.Println(string(in.Data.Value))
+	return &pb.BindingResponseEnvelope{}, nil
+}
+```
+
+4.启动
+
+``` cmd
+dapr run --app-id server --app-port 4001 --protocol grpc go run main.go
+```
+
+#### 使用 rabbitmq 现实 output binding  
+
+本例子项目在client目录下
+
+1.新建 components 配置文件 rabbitmq_binding.yaml，这个和 input binding 的配置相同  
+
+``` yaml
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: bindings-rabbitmq
+spec:
+  type: bindings.rabbitmq
+  metadata:
+  - name: queueName
+    value: dapr-bindings
+  - name: host
+    value: amqp://localhost:5672
+  - name: durable
+    value: true
+  - name: deleteWhenUnused
+    value: false
+```
+
+2.调用绑定
+
+``` go
+	client.InvokeBinding(context.Background(), &pb.InvokeBindingEnvelope{
+		Name: "bindings-rabbitmq",
+		Data: &any.Any{Value: []byte("Hello World!!!!")},
+	})
+```
+
+这里的 Name 使用 input binding 相同  
+
+3.启动
+
+``` cmd
+dapr run --app-id client go run main.go
+```
+
+启动后 intput binding 的控制台会输出 `Hello World!!!!`  
+
+#### binding 与 topic 的区别
+
+1. topic 是广播，binding 是一对一
+
+2. binding 不止使用队列，还可以其他组件详见 [Bindings](https://github.com/dapr/docs/blob/master/concepts/bindings/README.md)
+
+3. binding 可以和外部系统交互
